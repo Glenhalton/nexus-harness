@@ -1,0 +1,13 @@
+{
+  "$schema": "https://nexus-framework.dev/schemas/session.json",
+  "token": "NX-WAKE-J9NF-2026-08-22",
+  "issued_at": "2026-08-22T18:18:39.050Z",
+  "brain_hash": "brain-2026-08-22-10078fa",
+  "brain_hash_inputs": [
+    "docs/index.md",
+    "docs/knowledge.md",
+    "plans/_active.json"
+  ],
+  "active_plan": null,
+  "issued_by": "nexus mcp (agent: nexus-implementer)"
+}
