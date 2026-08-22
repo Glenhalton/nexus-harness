@@ -637,6 +637,27 @@ export interface Config {
 
 来源：[`packages/experimental/tool-agent-team/src/index.ts:17`](../packages/experimental/tool-agent-team/src/index.ts)
 
+<a id="deepseek-aidsh-experimental-tool-nexus-brain"></a>
+
+## `@deepseek-ai/dsh-experimental-tool-nexus-brain`
+
+需要：`tools`
+
+```ts config-catalog
+/** Model-facing NEXUS brain tool configuration. */
+export interface Config {
+  /**
+   * Absolute path to the target NEXUS project root (the directory containing
+   * `.nexus/`). Required — resolving against a host process's `process.cwd()`
+   * would silently point at the wrong project when this plugin runs inside a
+   * harness session composed for a different repository.
+   */
+  projectRoot: string
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts:43`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
 <a id="deepseek-aidsh-file-reference-local"></a>
 
 ## `@deepseek-ai/dsh-file-reference-local`
@@ -3233,6 +3254,7 @@ export interface Config {
 - `@deepseek-ai/dsh-client-runtime`（[`packages/client/runtime/src/index.ts`](../packages/client/runtime/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-agent-preset`（[`packages/client/ui-agent-preset/src/index.ts`](../packages/client/ui-agent-preset/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-attachment`（[`packages/client/ui-attachment/src/index.ts`](../packages/client/ui-attachment/src/index.ts)）
+- `@deepseek-ai/dsh-client-ui-brand-nexus`（[`packages/client/ui-brand-nexus/src/index.ts`](../packages/client/ui-brand-nexus/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-brand-official`（[`packages/client/ui-brand-official/src/index.ts`](../packages/client/ui-brand-official/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-commands`（[`packages/client/ui-commands/src/index.ts`](../packages/client/ui-commands/src/index.ts)）
 - `@deepseek-ai/dsh-client-ui-conversation`（[`packages/client/ui-conversation/src/index.ts`](../packages/client/ui-conversation/src/index.ts)）

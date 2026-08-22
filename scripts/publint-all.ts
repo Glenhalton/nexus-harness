@@ -13,6 +13,18 @@ import { publint, type Message, type PackFile } from 'publint'
 import { formatMessage } from 'publint/utils'
 import ts from 'typescript'
 
+/**
+ * Packages allowed a `LOCAL_DEPENDENCY` finding: publint's local-package-reference
+ * check assumes every scanned manifest is a publication candidate, but these
+ * are `private: true` experimental packages under `packages/experimental/`
+ * that will never be published, so the finding has no real consumer to warn.
+ */
+const LOCAL_DEPENDENCY_ALLOWLIST: ReadonlySet<string> = new Set([
+  // Depends on @nexus-framework/cli via `file:` until its new ./mcp subpath
+  // export ships a published version; see the package's README.
+  'packages/experimental/tool-nexus-brain',
+])
+
 const CONCURRENCY_ENV = 'DSH_PUBLINT_CONCURRENCY'
 const repositoryRoot = resolve(import.meta.dirname, '..')
 const { values: options } = parseArgs({
@@ -186,7 +198,10 @@ async function runPublint(target: PackageTarget): Promise<PublintResult> {
       pack: { files },
     })
     const manifest = result.pkg as Record<string, unknown>
-    return result.messages.some(message => message.type === 'error') || closureViolations.length > 0
+    const allowLocalDependency = LOCAL_DEPENDENCY_ALLOWLIST.has(target.path)
+    const hasError = result.messages.some(message =>
+      message.type === 'error' && !(allowLocalDependency && message.code === 'LOCAL_DEPENDENCY'))
+    return hasError || closureViolations.length > 0
       ? { path: target.path, status: 'failed', messages: result.messages, closureViolations, manifest }
       : { path: target.path, status: 'passed', messages: result.messages, closureViolations, manifest }
   } catch (error: unknown) {

@@ -43,6 +43,7 @@
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`、`job_list`、`job_output` | `ctx.tools`、`ctx.jobs`、`ctx.systemPrompt` | `tool/call`、`tool/result`、`user/message via agent.inject() for background completion notices` | - | 与任务种类无关的后台任务控制器：后台 bash 命令、PTY 发送和 subagent 都通过相同的 3 个工具读取、列出和终止。加载该插件会挂接控制器，从而启用生产方的 `ctx.jobs.start()`。 |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | `followup_task`、`interrupt_agent`、`list_agents`、`send_message`、`spawn_teammate`、`team_task_create`、`team_task_get`、`team_task_list`、`team_task_update`、`wait_agent` | `ctx.tools`、`ctx.systemPrompt`、`ctx.agentTeams`、`an exact live Team member Agent` | `tool/call`、`team/member`、`team/message/queued`、`team/message/delivered`、`team/task`、`tool/result` | - | 这 10 个工具限定于隐式 Team Lead 与持久 teammate 作用域。随产品发布的 dsh-base bundle 默认禁用该包；文档中的 Agent Teams profile patch 会启用它，并禁用旧 continuable child 的同名控制工具。 |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
+| `@deepseek-ai/dsh-experimental-tool-nexus-brain` | `nexus_add_knowledge_entry`、`nexus_brief`、`nexus_doctor`、`nexus_get_active_plan`、`nexus_get_agent`、`nexus_get_context`、`nexus_get_handoff`、`nexus_get_plan`、`nexus_get_skill`、`nexus_get_vital_signs`、`nexus_list_agents`、`nexus_list_plans`、`nexus_list_skills`、`nexus_plan_note`、`nexus_plan_tick`、`nexus_query_knowledge`、`nexus_wake` | `ctx.tools`、`a NEXUS project (.nexus/) at Config.projectRoot` | - | - | 每个 nexus_* 工具都直接通过 @nexus-framework/cli 的处理函数读写目标 NEXUS 项目的 .nexus/ 目录，而不经过这个 harness 的会话日志 —— 本目录是针对构建期固定的 fixture NEXUS 项目启动的，而非某个真实存在的项目。 |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`、`web_search` | `ctx.tools`、`ctx.web`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。 |
 
@@ -2080,6 +2081,395 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 来源：[`packages/todo/tool-todo/src/index.ts`](../packages/todo/tool-todo/src/index.ts)
 
 todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。
+
+<a id="deepseek-aidsh-experimental-tool-nexus-brain"></a>
+
+## `@deepseek-ai/dsh-experimental-tool-nexus-brain`
+
+### `nexus_add_knowledge_entry`
+
+向 NEXUS 项目的追加式知识库写入一条经过校验的条目。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "category": {
+      "type": "string",
+      "description": "One knowledge category tag.",
+      "enum": [
+        "architecture",
+        "bug-fix",
+        "pattern",
+        "package",
+        "performance",
+        "convention",
+        "gotcha",
+        "integration"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "description": "Short, specific title — must not collide with an existing entry."
+    },
+    "body": {
+      "type": "string",
+      "description": "1-3 sentence insight."
+    },
+    "why": {
+      "type": "string",
+      "description": "Optional \"Why\" line — the reason this matters."
+    },
+    "howToApply": {
+      "type": "string",
+      "description": "Optional \"How to apply\" line."
+    }
+  },
+  "required": [
+    "category",
+    "title",
+    "body"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_brief`
+
+Markdown 状态摘要 —— 近期已交付的工作、vitals、doctor 发现项、建议的下一步行动。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "since": {
+      "type": "string",
+      "description": "Git date expression for the shipped window (default \"7 days ago\")."
+    }
+  }
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_doctor`
+
+NEXUS 漂移报告（D01-D14 检查项）—— 过期文档、缺失的 gate 记录、大脑卫生问题。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "minSeverity": {
+      "type": "string",
+      "description": "Minimum severity to report (default \"info\").",
+      "enum": [
+        "info",
+        "warn",
+        "error"
+      ]
+    }
+  }
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_get_active_plan`
+
+当前活跃的 NEXUS 计划及其下一个未勾选步骤 —— “我正在做什么”这个问题的答案。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_get_agent`
+
+按名称读取一个 NEXUS agent 角色定义。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_get_context`
+
+为一项任务组合出**一份**限定范围的 NEXUS 上下文包：当前计划片段、对齐 gate、vitals、匹配的技能、匹配的知识条目，以及配方文档 —— 由 maxChars 限定大小。优先使用它，而不是分别调用 nexus_get_active_plan / nexus_query_knowledge / nexus_list_skills。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "task": {
+      "type": "string",
+      "description": "Task description — used to match knowledge entries and skill triggers."
+    },
+    "agent": {
+      "type": "string",
+      "description": "Agent whose context recipe scopes the composition."
+    },
+    "maxChars": {
+      "type": "integer",
+      "description": "Soft cap on composed payload size (2000-60000, default 12000)."
+    }
+  },
+  "required": [
+    "task"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_get_handoff`
+
+NEXUS agent 交接流水线，以及在给定当前 agent 的情况下，下一个应当派发的 agent。交接由**主线程**执行 —— subagent 不能调用 subagent。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "agent": {
+      "type": "string",
+      "description": "The agent currently acting, to look up the next in the handoff chain."
+    }
+  }
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_get_plan`
+
+按 id 返回一个 NEXUS 计划的完整 markdown。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Plan id, e.g. \"add-user-authentication\"."
+    }
+  },
+  "required": [
+    "id"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_get_skill`
+
+按名称读取一个 NEXUS 技能（custom > core > community 优先级）。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_get_vital_signs`
+
+实时的 NEXUS 仓库探针：git 分支/脏状态、文件计数、测试摘要、包状态。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_list_agents`
+
+列出所有已安装的 NEXUS agent 角色定义。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_list_plans`
+
+列出全部 NEXUS 计划及其状态，用于定位方向。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "description": "Restrict to one plan status.",
+      "enum": [
+        "draft",
+        "approved",
+        "in_progress",
+        "blocked",
+        "done",
+        "abandoned"
+      ]
+    }
+  }
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_list_skills`
+
+列出 custom/、core/、community/ 中安装的每一个技能。
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_plan_note`
+
+向一个 NEXUS 计划追加一条带时间戳的备注。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "message"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_plan_tick`
+
+勾选或重新打开一个 NEXUS 计划的某个步骤。经过 schema 校验 —— 切勿手工编辑计划 markdown。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "step": {
+      "type": "integer",
+      "description": "1-based step index as shown by nexus_get_active_plan."
+    },
+    "checked": {
+      "type": "boolean",
+      "description": "Set false to reopen a step. Default true."
+    }
+  },
+  "required": [
+    "id",
+    "step"
+  ]
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_query_knowledge`
+
+对 NEXUS 项目的追加式知识库做定向检索。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Space-separated keywords matched against category, title, and body."
+    },
+    "category": {
+      "type": "string",
+      "description": "Restrict to one category tag.",
+      "enum": [
+        "architecture",
+        "bug-fix",
+        "pattern",
+        "package",
+        "performance",
+        "convention",
+        "gotcha",
+        "integration"
+      ]
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Maximum entries returned (1-50, default 10); out-of-range values are clamped."
+    }
+  }
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_wake`
+
+NEXUS 会话握手：一次调用返回令牌 + 精简的大脑摘要（当前计划、doctor 计数）。
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "agent": {
+      "type": "string",
+      "description": "Agent identity recorded in .nexus/state/session.json."
+    }
+  }
+}
+```
+
+来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+每个 nexus_* 工具都直接通过 @nexus-framework/cli 的处理函数读写目标 NEXUS 项目的 .nexus/ 目录，而不经过这个 harness 的会话日志 —— 本目录是针对构建期固定的 fixture NEXUS 项目启动的，而非某个真实存在的项目。
 
 <a id="deepseek-aidsh-tool-workflow"></a>
 

@@ -39,6 +39,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`, `job_list`, `job_output` | `ctx.tools`, `ctx.jobs`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `user/message via agent.inject() for background completion notices` | - | The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers' `ctx.jobs.start()`. |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | `followup_task`, `interrupt_agent`, `list_agents`, `send_message`, `spawn_teammate`, `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update`, `wait_agent` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `an exact live Team member Agent` | `tool/call`, `team/member`, `team/message/queued`, `team/message/delivered`, `team/task`, `tool/result` | - | All ten tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names. |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`, `owning Agent session` | `tool/call`, `todo/write`, `tool/result` | - | todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task. |
+| `@deepseek-ai/dsh-experimental-tool-nexus-brain` | `nexus_add_knowledge_entry`, `nexus_brief`, `nexus_doctor`, `nexus_get_active_plan`, `nexus_get_agent`, `nexus_get_context`, `nexus_get_handoff`, `nexus_get_plan`, `nexus_get_skill`, `nexus_get_vital_signs`, `nexus_list_agents`, `nexus_list_plans`, `nexus_list_skills`, `nexus_plan_note`, `nexus_plan_tick`, `nexus_query_knowledge`, `nexus_wake` | `ctx.tools`, `a NEXUS project (.nexus/) at Config.projectRoot` | - | - | Every nexus_* tool reads or writes the target NEXUS project's .nexus/ directory directly through @nexus-framework/cli's handlers, not through this harness's session log — the catalog boots against a fixture NEXUS project fixed at build time, not a live one. |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`, `web_search` | `ctx.tools`, `ctx.web`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps. |
 
@@ -2073,6 +2074,395 @@ Record and update a structured task list for the current work. Send the ENTIRE l
 Source: [`packages/todo/tool-todo/src/index.ts`](../packages/todo/tool-todo/src/index.ts)
 
 todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task.
+
+<a id="deepseek-aidsh-experimental-tool-nexus-brain"></a>
+
+## `@deepseek-ai/dsh-experimental-tool-nexus-brain`
+
+### `nexus_add_knowledge_entry`
+
+Append a validated entry to the NEXUS project's append-only knowledge base.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "category": {
+      "type": "string",
+      "description": "One knowledge category tag.",
+      "enum": [
+        "architecture",
+        "bug-fix",
+        "pattern",
+        "package",
+        "performance",
+        "convention",
+        "gotcha",
+        "integration"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "description": "Short, specific title — must not collide with an existing entry."
+    },
+    "body": {
+      "type": "string",
+      "description": "1-3 sentence insight."
+    },
+    "why": {
+      "type": "string",
+      "description": "Optional \"Why\" line — the reason this matters."
+    },
+    "howToApply": {
+      "type": "string",
+      "description": "Optional \"How to apply\" line."
+    }
+  },
+  "required": [
+    "category",
+    "title",
+    "body"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_brief`
+
+Markdown status digest — recent shipped work, vitals, doctor findings, suggested next actions.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "since": {
+      "type": "string",
+      "description": "Git date expression for the shipped window (default \"7 days ago\")."
+    }
+  }
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_doctor`
+
+NEXUS drift report (D01-D14 checks) — stale docs, missing gate records, brain hygiene issues.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "minSeverity": {
+      "type": "string",
+      "description": "Minimum severity to report (default \"info\").",
+      "enum": [
+        "info",
+        "warn",
+        "error"
+      ]
+    }
+  }
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_get_active_plan`
+
+The active NEXUS plan with its next unchecked step — the "what am I doing" call.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_get_agent`
+
+Read one NEXUS agent role definition by name.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_get_context`
+
+Compose ONE scoped NEXUS context pack for a task: active plan slice, alignment gate, vitals, matching skills, matching knowledge entries, and recipe docs — bounded by maxChars. Prefer this over separate nexus_get_active_plan / nexus_query_knowledge / nexus_list_skills calls.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "task": {
+      "type": "string",
+      "description": "Task description — used to match knowledge entries and skill triggers."
+    },
+    "agent": {
+      "type": "string",
+      "description": "Agent whose context recipe scopes the composition."
+    },
+    "maxChars": {
+      "type": "integer",
+      "description": "Soft cap on composed payload size (2000-60000, default 12000)."
+    }
+  },
+  "required": [
+    "task"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_get_handoff`
+
+The NEXUS agent handoff pipeline and, given the current agent, the next one to dispatch. Handoffs are executed by the MAIN THREAD — subagents cannot call subagents.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "agent": {
+      "type": "string",
+      "description": "The agent currently acting, to look up the next in the handoff chain."
+    }
+  }
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_get_plan`
+
+Full markdown of one NEXUS plan by id.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Plan id, e.g. \"add-user-authentication\"."
+    }
+  },
+  "required": [
+    "id"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_get_skill`
+
+Read one NEXUS skill by name (custom > core > community precedence).
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_get_vital_signs`
+
+Live NEXUS repo sensors: git branch/dirty state, file counts, test summary, package status.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_list_agents`
+
+List installed NEXUS agent role definitions.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_list_plans`
+
+All NEXUS plans with status, for orientation.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "status": {
+      "type": "string",
+      "description": "Restrict to one plan status.",
+      "enum": [
+        "draft",
+        "approved",
+        "in_progress",
+        "blocked",
+        "done",
+        "abandoned"
+      ]
+    }
+  }
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_list_skills`
+
+List every installed NEXUS skill across custom/, core/, community/.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_plan_note`
+
+Append a timestamped note to a NEXUS plan.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "message"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_plan_tick`
+
+Tick (check or reopen) one step of a NEXUS plan. Schema-validated — never hand-edit plan markdown.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string"
+    },
+    "step": {
+      "type": "integer",
+      "description": "1-based step index as shown by nexus_get_active_plan."
+    },
+    "checked": {
+      "type": "boolean",
+      "description": "Set false to reopen a step. Default true."
+    }
+  },
+  "required": [
+    "id",
+    "step"
+  ]
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_query_knowledge`
+
+Targeted retrieval over the NEXUS project's append-only knowledge base.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Space-separated keywords matched against category, title, and body."
+    },
+    "category": {
+      "type": "string",
+      "description": "Restrict to one category tag.",
+      "enum": [
+        "architecture",
+        "bug-fix",
+        "pattern",
+        "package",
+        "performance",
+        "convention",
+        "gotcha",
+        "integration"
+      ]
+    },
+    "limit": {
+      "type": "integer",
+      "description": "Maximum entries returned (1-50, default 10); out-of-range values are clamped."
+    }
+  }
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+### `nexus_wake`
+
+NEXUS session handshake: token + compact brain digest (active plan, doctor counts) in one call.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "agent": {
+      "type": "string",
+      "description": "Agent identity recorded in .nexus/state/session.json."
+    }
+  }
+}
+```
+
+Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
+
+Every nexus_* tool reads or writes the target NEXUS project's .nexus/ directory directly through @nexus-framework/cli's handlers, not through this harness's session log — the catalog boots against a fixture NEXUS project fixed at build time, not a live one.
 
 <a id="deepseek-aidsh-tool-workflow"></a>
 

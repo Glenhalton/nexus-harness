@@ -61,6 +61,7 @@ import * as ToolTasks from '@deepseek-ai/dsh-tool-jobs'
 import type TeamService from '@deepseek-ai/dsh-experimental-agent-team'
 import * as ToolTeam from '@deepseek-ai/dsh-experimental-tool-agent-team'
 import * as ToolTodo from '@deepseek-ai/dsh-tool-todo'
+import * as ToolNexusBrain from '@deepseek-ai/dsh-experimental-tool-nexus-brain'
 import * as ToolSubagent from '@deepseek-ai/dsh-tool-subagent'
 import * as ToolWeb from '@deepseek-ai/dsh-tool-web'
 import VmWorkflowEngine from '@deepseek-ai/dsh-workflow-worker-thread'
@@ -572,6 +573,20 @@ const TOOL_PACKAGES: ToolPackage[] = [
     },
     note:
       'todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-experimental-tool-nexus-brain',
+    dir: 'tool-nexus-brain',
+    source: 'packages/experimental/tool-nexus-brain/src/index.ts',
+    requires: ['ctx.tools', 'a NEXUS project (.nexus/) at Config.projectRoot'],
+    writes: [],
+    async mount(ctx) {
+      await ctx.plugin(ToolNexusBrain, {
+        projectRoot: resolve(root, 'packages/experimental/tool-nexus-brain/tests/fixtures/nexus-project'),
+      })
+    },
+    note:
+      'Every nexus_* tool reads or writes the target NEXUS project\'s .nexus/ directory directly through @nexus-framework/cli\'s handlers, not through this harness\'s session log — the catalog boots against a fixture NEXUS project fixed at build time, not a live one.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-workflow',
