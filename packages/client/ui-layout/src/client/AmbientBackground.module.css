@@ -1,0 +1,101 @@
+/* Decorative ambient layer, gated entirely by --dsh-ambient-display
+   (gradient-shadow-text.css: `none` default, `block` under the nexus theme).
+   Sits behind every frame column with no explicit z-index (DOM order alone
+   places it under .sidebarCol/.centerCol/.detailsCol, all of which paint
+   their own background or content) -- see AppFrame.module.css's z-index
+   ladder (.handle: 2, .overlayLayer: 20) for the layers this must stay under. */
+
+.root {
+  position: absolute;
+  inset: 0;
+  display: var(--dsh-ambient-display);
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--dsw-alias-brand-primary) 0%, transparent 70%);
+  filter: blur(64px);
+  will-change: transform;
+}
+
+.orbA {
+  width: 480px;
+  height: 480px;
+  top: -120px;
+  left: -80px;
+  opacity: 0.5;
+  animation: dsh-orb-drift-a 26s ease-in-out infinite;
+}
+
+.orbB {
+  width: 380px;
+  height: 380px;
+  top: 40%;
+  right: -100px;
+  opacity: 0.32;
+  animation: dsh-orb-drift-b 32s ease-in-out infinite;
+}
+
+.orbC {
+  width: 320px;
+  height: 320px;
+  bottom: -140px;
+  left: 30%;
+  opacity: 0.4;
+  animation: dsh-orb-drift-c 22s ease-in-out infinite;
+}
+
+@keyframes dsh-orb-drift-a {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(60px, 40px) scale(1.08); }
+}
+
+@keyframes dsh-orb-drift-b {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(-50px, 30px) scale(0.94); }
+}
+
+@keyframes dsh-orb-drift-c {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50% { transform: translate(30px, -50px) scale(1.05); }
+}
+
+.synapse {
+  position: absolute;
+  inset: 0;
+  opacity: 0.5;
+}
+
+.synapse line {
+  stroke: var(--dsw-alias-brand-primary);
+  stroke-width: 1;
+  opacity: 0.16;
+}
+
+.synapse circle {
+  fill: var(--dsw-alias-brand-primary);
+  opacity: 0.45;
+}
+
+.pulse {
+  stroke: var(--dsw-alias-brand-primary);
+  stroke-width: 1.5;
+  stroke-dasharray: 6 220;
+  stroke-linecap: round;
+  opacity: 0.9;
+  animation: dsh-synapse-travel 7s linear infinite;
+}
+
+@keyframes dsh-synapse-travel {
+  to { stroke-dashoffset: -226; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb,
+  .pulse {
+    animation: none;
+  }
+}

@@ -4,7 +4,11 @@
   grid-template-rows: 100%;
   height: 100%;
   overflow: hidden;
-  background: var(--dsw-alias-bg-base);
+  /* --dsh-frame-bg defaults to var(--dsw-alias-bg-base) (gradient-shadow-text.css) --
+     identical to the old hardcoded reference for light/dark/system. Only the
+     nexus theme overrides it (to transparent, revealing AmbientBackground
+     through the inter-panel gap). */
+  background: var(--dsh-frame-bg);
   /* Collapse/expand animates the tracks on the deepsuite sider curve
      (--ds-ease-in-out / --ds-transition-duration-slow, ui-theme base.css). */
   transition: grid-template-columns var(--ds-transition-duration-slow) var(--ds-ease-in-out);
@@ -25,8 +29,12 @@
 .sidebarCol {
   min-width: 0;
   overflow: hidden;
-  background: var(--dsw-specific-sidebar-fill);
-  border-right: 1px solid var(--dsw-alias-border-l1);
+  /* --dsh-frame-sidebar-bg/--dsh-frame-border default to the old hardcoded
+     values (gradient-shadow-text.css) -- identical for light/dark/system.
+     Nexus overrides both to transparent/none, since SidebarRoot's own .root
+     (ui-sidebar) becomes the visible translucent card. */
+  background: var(--dsh-frame-sidebar-bg);
+  border-right: var(--dsh-frame-border);
 }
 
 .centerCol {
@@ -39,7 +47,11 @@
 .detailsCol {
   min-width: 0;
   overflow: hidden;
-  border-left: 1px solid var(--dsw-alias-border-l2);
+  /* --dsh-frame-details-border defaults to the old hardcoded value
+     (gradient-shadow-text.css) -- identical for light/dark/system. Nexus
+     overrides it to none, since DetailsPanel's own .root (ui-conversation)
+     becomes the visible translucent card, matching .sidebarCol's border. */
+  border-left: var(--dsh-frame-details-border);
 }
 
 /* The details subtree stays mounted at zero width, so its border must not paint

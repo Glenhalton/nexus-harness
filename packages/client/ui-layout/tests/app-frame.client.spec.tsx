@@ -219,6 +219,19 @@ describe('AppFrame', () => {
     expect(slotCalls.find(c => c.key === 'sidebar')!.props).toEqual({ collapsed: false, width: 280 })
   })
 
+  it('renders AmbientBackground as the frame\'s first child, ahead of every slot column', () => {
+    // The Nexus glass re-theme's decorative layer: always mounted (visibility
+    // is CSS-token-gated, not React-conditional — see AmbientBackground.tsx),
+    // and must sit before .sidebarCol in DOM order so it paints underneath
+    // every column with no explicit z-index.
+    const { frame, getByTestId } = mountFrame()
+    expect(frame.firstElementChild?.getAttribute('aria-hidden')).toBe('true')
+    expect(frame.firstElementChild?.querySelector('svg')).toBeTruthy()
+    // Existing slot content still renders and is unaffected by the new sibling.
+    expect(getByTestId('sidebar-content')).toBeTruthy()
+    expect(getByTestId('center-content')).toBeTruthy()
+  })
+
   it('sidebar drag widens through rAF-batched pointer moves', () => {
     const { frame } = mountFrame()
     const handles = frame.querySelectorAll('[class*="handle"]')
