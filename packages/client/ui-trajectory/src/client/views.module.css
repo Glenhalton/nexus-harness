@@ -10,7 +10,11 @@
   width: 100%;
   box-sizing: border-box;
   color: var(--dsw-alias-label-primary);
-  background: var(--dsw-alias-bg-layer-1);
+  /* Defaults to var(--dsw-alias-bg-layer-1) (gradient-shadow-text.css) --
+     identical to the old direct reference for light/dark/system. Nexus goes
+     transparent so this renders inside ConversationRoot's own glass card
+     instead of painting an opaque rectangle over it. */
+  background: var(--dsh-trajectory-bg);
 }
 
 .ledger {
