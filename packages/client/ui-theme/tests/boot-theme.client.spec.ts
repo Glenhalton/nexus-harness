@@ -42,6 +42,13 @@ describe('theme bootstrap row', () => {
     expect(document.body.hasAttribute(DARK_ATTRIBUTE)).toBe(false)
   })
 
+  it('resolves nexus to the dark scheme regardless of the OS preference', () => {
+    mockSystemDark(false)
+    executeBootstrap('nexus')
+    expect(document.documentElement.style.colorScheme).toBe('dark')
+    expect(document.body.hasAttribute(DARK_ATTRIBUTE)).toBe(true)
+  })
+
   it.each([
     [true, 'dark', true],
     [false, 'light', false],

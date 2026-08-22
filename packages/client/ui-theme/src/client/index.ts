@@ -116,9 +116,35 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
+/**
+ * Nexus's fixed accent: the mint green from nexus-homepage's own palette
+ * (`--mint: #34d399`, "one accent that means alive"), not an invented color.
+ * Overrides the alias tokens that carry brand color in the dark palette
+ * (button-primary/info fill+hover, business state) plus the sidebar active
+ * nav-item accent — which `dark` leaves fully neutral
+ * (`--dsw-static-neutral-bluish-800`, no color at all) — so the branded look
+ * is visible on the screen a user actually looks at, not only on buttons a
+ * default view may never show. Backgrounds, borders, and neutrals stay
+ * identical to `dark`. `--dsw-alias-button-primary-hover` needs its own
+ * value because it is a literal in design-platform.css, not a
+ * `var(--dsw-alias-brand-primary)` reference — unlike
+ * `--dsw-alias-button-primary-fill`, which inherits the override for free
+ * through the cascade.
+ */
+const NEXUS_ACCENT_TOKENS: ThemeTokens = Object.freeze({
+  '--dsw-alias-brand-primary': 'rgb(52, 211, 153)',
+  '--dsw-alias-button-primary-hover': 'rgb(28, 168, 122)',
+  '--dsw-alias-button-info-fill': 'rgb(52, 211, 153)',
+  '--dsw-alias-button-info-hover': 'rgb(28, 168, 122)',
+  '--dsw-alias-state-business-primary': 'rgb(52, 211, 153)',
+  '--dsw-alias-state-business-tertiary': 'rgba(52, 211, 153, 0.16)',
+  '--dsw-specific-sidebar-nav-item-active-accent': 'rgba(52, 211, 153, 0.14)',
+})
+
 const BUILTIN_THEMES: readonly ThemeDefinition[] = Object.freeze([
   Object.freeze({ id: 'light', colorScheme: 'light' as const, tokens: Object.freeze({}) }),
   Object.freeze({ id: 'dark', colorScheme: 'dark' as const, tokens: Object.freeze({}) }),
+  Object.freeze({ id: 'nexus', colorScheme: 'dark' as const, tokens: NEXUS_ACCENT_TOKENS }),
 ])
 
 const BUILTIN_INSPECT_TOKENS: readonly ThemeTokenInspection[] = Object.freeze([
