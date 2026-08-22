@@ -1404,3 +1404,53 @@ describe('API key field', () => {
     expect(screen.queryByText(en.customTitle)).toBeNull()
   })
 })
+
+describe('Ollama quick-add button', () => {
+  it('reaches the card from the section and returns to the button row on cancel', async () => {
+    await mountSection({ discover: vi.fn(() => new Promise(() => {})) })
+
+    fireEvent.click(screen.getByRole('button', { name: en.ollamaAdd }))
+    expect(screen.getByText(en.ollamaTitle)).toBeTruthy()
+    // Only the open card renders while it is open — the sibling add buttons,
+    // Ollama's own included, are the same one-card-at-a-time row the generic
+    // custom-provider card already owns.
+    expect(screen.queryByRole('button', { name: en.customAdd })).toBeNull()
+
+    fireEvent.click(screen.getByText(en.cancel))
+    await waitFor(() => { expect(screen.queryByText(en.ollamaTitle)).toBeNull() })
+    expect(screen.getByRole('button', { name: en.ollamaAdd })).toBeTruthy()
+
+    // The row is back, so a sibling add flow is reachable and opens instead.
+    fireEvent.click(screen.getByRole('button', { name: en.customAdd }))
+    expect(screen.getByText(en.customTitle)).toBeTruthy()
+    expect(screen.queryByText(en.ollamaTitle)).toBeNull()
+  })
+
+  it('closes the Ollama card when an existing row is opened for editing', async () => {
+    await mountSection({
+      providers: { openai: { baseURL: 'https://proxy.example/v1' } },
+      discover: vi.fn(() => new Promise(() => {})),
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: en.ollamaAdd }))
+    expect(screen.getByText(en.ollamaTitle)).toBeTruthy()
+
+    openEditor('openai')
+    expect(screen.queryByText(en.ollamaTitle)).toBeNull()
+  })
+
+  it('creates a keyless local Ollama route and reloads the section', async () => {
+    const discover = vi.fn(() => Promise.resolve(ok({ models: [{ id: 'llama3' }] })))
+    const { controller, mutate } = await mountSection({ discover })
+    const load = vi.spyOn(controller, 'load')
+
+    fireEvent.click(screen.getByRole('button', { name: en.ollamaAdd }))
+    await screen.findByLabelText<HTMLInputElement>(`${en.modelId} 1`)
+    fireEvent.click(screen.getByText(en.create))
+
+    await waitFor(() => { expect(mutate).toHaveBeenCalledOnce() })
+    expect(firstMutate(mutate).ops[0]?.value).toMatchObject({ baseURL: 'http://localhost:11434/v1' })
+    await waitFor(() => { expect(load).toHaveBeenCalledOnce() })
+    expect(screen.queryByText(en.ollamaTitle)).toBeNull()
+  })
+})

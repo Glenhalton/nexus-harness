@@ -6,9 +6,11 @@
  * configured key renders as its open setup card instead of a row, but only in
  * the first-run posture — no provider on the page can serve requests yet — and
  * only until the user closes that card; the add flow is a card carrying the
- * dormant-provider select. Each card kind owns its own open state, so closing
- * one never discards a draft in another. Every mutation writes through the
- * wire, while a provider removal first requires confirmation; the page
+ * dormant-provider select, with an Ollama-shaped shortcut over the same
+ * hand-declared route mechanism beside it. Each card kind owns its own open
+ * state, so closing one never discards a draft in another. Every mutation
+ * writes through the wire, while a provider removal first requires
+ * confirmation; the page
  * re-renders from pushed invalidations or the post-apply reload.
  */
 
@@ -18,6 +20,7 @@ import type { IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
 import { Button, IconPlusOutline16, Modal } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace } from '@deepseek-ai/dsh-client-ui-slots'
 import { CustomProviderCard } from './CustomProviderCard.tsx'
+import { OllamaQuickAddCard } from './OllamaQuickAddCard.tsx'
 import { deriveKeyRef, messageOf, protocolChoices, providerUsable } from './store.ts'
 import type { ModelsSettingsStore, ProviderRow } from './store.ts'
 import type { SettingsSchemaOperations } from './schema-operations.ts'
@@ -194,6 +197,7 @@ function Loaded({ injected }: { injected: ModelsSectionFace }): ReactNode {
   const [deleteFailure, setDeleteFailure] = useState<string | undefined>(undefined)
   const [savedTarget, setSavedTarget] = useState<ProviderIdentity | undefined>(undefined)
   const [declaring, setDeclaring] = useState(false)
+  const [addingOllama, setAddingOllama] = useState(false)
   const [dismissedSetup, setDismissedSetup] = useState<ReadonlySet<string>>(() => new Set())
 
   const announceSaved = (target: ProviderIdentity): void => {
@@ -207,7 +211,13 @@ function Loaded({ injected }: { injected: ModelsSectionFace }): ReactNode {
     setEditing(undefined)
     setAdding(false)
     setDeclaring(false)
+    setAddingOllama(false)
     if (changed) announceSaved(target)
+  }
+
+  const closeOllama = (changed: boolean): void => {
+    setAddingOllama(false)
+    if (changed) void controller.load()
   }
 
   /**
@@ -359,10 +369,12 @@ function Loaded({ injected }: { injected: ModelsSectionFace }): ReactNode {
                     aria-label={providerCopy(t('editProvider'), target)}
                     onClick={() => {
                       setSavedTarget(undefined)
-                      // One card at a time: leaving `declaring` set would show
-                      // the create card beside this editor, and closing either
-                      // one discards the other's draft.
+                      // One card at a time: leaving `declaring` or
+                      // `addingOllama` set would show a create card beside
+                      // this editor, and closing either one discards the
+                      // other's draft.
                       setDeclaring(false)
+                      setAddingOllama(false)
                       setAdding(false)
                       setEditing(open ? undefined : target)
                     }}
@@ -458,46 +470,78 @@ function Loaded({ injected }: { injected: ModelsSectionFace }): ReactNode {
                 />
               </div>
             )
-            : (
-              // One row for the two ways to gain a provider: adopt one the
-              // adapter already knows, or declare one it does not. Side by side
-              // and equal-width so they read as siblings and line up with the
-              // rows above, rather than two pills of different lengths.
-              <div className={styles['addActions']}>
-                <button
-                  type="button"
-                  className={styles['addButton']}
-                  disabled={addable.length === 0 || !state.writable}
-                  onClick={() => {
-                    const first = addable[0]
-                    /* v8 ignore next -- the button is disabled while nothing is addable */
-                    if (first === undefined) return
-                    setSavedTarget(undefined)
-                    setDeclaring(false)
-                    setAdding(true)
-                    setEditing(targetOf(first))
-                  }}
-                >
-                  {/* Same glyph as the composer's attach button. */}
-                  <IconPlusOutline16 size={14} />
-                  {t('add')}
-                </button>
-                <button
-                  type="button"
-                  className={styles['addButton']}
-                  disabled={protocols.length === 0 || !state.writable}
-                  onClick={() => {
-                    setSavedTarget(undefined)
-                    setAdding(false)
-                    setEditing(undefined)
-                    setDeclaring(true)
-                  }}
-                >
-                  <IconPlusOutline16 size={14} />
-                  {t('customAdd')}
-                </button>
-              </div>
-            )}
+            : addingOllama
+              ? (
+                <div className={styles['addCard']}>
+                  <OllamaQuickAddCard
+                    taken={state.rows.map(row => row.entry.provider)}
+                    /* v8 ignore next -- the card only opens from a button disabled without this namespace */
+                    revision={state.namespaces.get('llm-pi-ai')?.revision ?? 0}
+                    api={api}
+                    t={t}
+                    readOnly={!state.writable}
+                    onClose={closeOllama}
+                  />
+                </div>
+              )
+              : (
+                // One row for the three ways to gain a provider: adopt one the
+                // adapter already knows, declare one it does not, or take the
+                // Ollama shortcut over that same declare mechanism. Side by
+                // side and equal-width so they read as siblings and line up
+                // with the rows above, rather than pills of different lengths.
+                <div className={styles['addActions']}>
+                  <button
+                    type="button"
+                    className={styles['addButton']}
+                    disabled={addable.length === 0 || !state.writable}
+                    onClick={() => {
+                      const first = addable[0]
+                      /* v8 ignore next -- the button is disabled while nothing is addable */
+                      if (first === undefined) return
+                      setSavedTarget(undefined)
+                      setDeclaring(false)
+                      setAddingOllama(false)
+                      setAdding(true)
+                      setEditing(targetOf(first))
+                    }}
+                  >
+                    {/* Same glyph as the composer's attach button. */}
+                    <IconPlusOutline16 size={14} />
+                    {t('add')}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles['addButton']}
+                    disabled={protocols.length === 0 || !state.writable}
+                    onClick={() => {
+                      setSavedTarget(undefined)
+                      setAdding(false)
+                      setAddingOllama(false)
+                      setEditing(undefined)
+                      setDeclaring(true)
+                    }}
+                  >
+                    <IconPlusOutline16 size={14} />
+                    {t('customAdd')}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles['addButton']}
+                    disabled={protocols.length === 0 || !state.writable}
+                    onClick={() => {
+                      setSavedTarget(undefined)
+                      setAdding(false)
+                      setDeclaring(false)
+                      setEditing(undefined)
+                      setAddingOllama(true)
+                    }}
+                  >
+                    <IconPlusOutline16 size={14} />
+                    {t('ollamaAdd')}
+                  </button>
+                </div>
+              )}
       </div>
       <Modal
         open={deleteTarget !== undefined}

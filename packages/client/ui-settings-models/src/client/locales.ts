@@ -99,6 +99,17 @@ export const en = {
   onboardingSave: 'Save and continue',
   onboardingSaving: 'Saving…',
   keyRequired: 'Enter an API key to continue.',
+  ollamaAdd: 'Add Ollama',
+  ollamaTitle: 'Ollama',
+  ollamaMode: 'Mode',
+  ollamaModeLocal: 'Local',
+  ollamaModeCloud: 'Cloud',
+  ollamaLocalHint: 'Detected from a local Ollama server — no API key needed.',
+  ollamaCloudHint: 'Requires an Ollama Cloud API key.',
+  ollamaProtocolNote: 'Speaks Ollama’s OpenAI-compatible API.',
+  ollamaDetecting: 'Looking for a local Ollama server…',
+  ollamaDetectFailed: 'Couldn’t reach a local Ollama server at this address. Start Ollama, then fetch models manually.',
+  ollamaCloudKeyRequired: 'Ollama Cloud needs an API key.',
 }
 
 /** The settings.models namespace key union. */
@@ -201,4 +212,15 @@ export const zh: { [Key in keyof typeof en]: string } = {
   onboardingSave: '保存并继续',
   onboardingSaving: '保存中…',
   keyRequired: '请输入 API 密钥后继续。',
+  ollamaAdd: '添加 Ollama',
+  ollamaTitle: 'Ollama',
+  ollamaMode: '模式',
+  ollamaModeLocal: '本地',
+  ollamaModeCloud: '云端',
+  ollamaLocalHint: '从本地 Ollama 服务检测得到——无需 API 密钥。',
+  ollamaCloudHint: '需要 Ollama Cloud API 密钥。',
+  ollamaProtocolNote: '使用 Ollama 的 OpenAI 兼容接口。',
+  ollamaDetecting: '正在查找本地 Ollama 服务…',
+  ollamaDetectFailed: '无法连接到该地址的本地 Ollama 服务。请启动 Ollama，然后手动获取模型。',
+  ollamaCloudKeyRequired: 'Ollama Cloud 需要 API 密钥。',
 }
