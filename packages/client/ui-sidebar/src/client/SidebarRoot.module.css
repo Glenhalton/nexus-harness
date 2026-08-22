@@ -8,18 +8,52 @@
 
 .root {
   --dsh-sidebar-inline-padding: 12px;
+  /* Anchors .root::before; establishes no containing block by itself
+     (position:relative alone, with no z-index, creates no stacking context
+     and is not a filter/transform host -- see the ::before comment below for
+     why backdrop-filter must never land directly on .root). */
+  position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* --dsh-glass-margin defaults to 0px (gradient-shadow-text.css), making
+     this calc() exactly 100% -- identical to the old bare `height: 100%` for
+     light/dark/system. Only nexus sets a non-zero margin, insetting the card
+     within its (unchanged) AppFrame column on every side. */
+  height: calc(100% - (var(--dsh-glass-margin) * 2));
+  margin: var(--dsh-glass-margin);
   padding: 6px var(--dsh-sidebar-inline-padding);
   box-sizing: border-box;
-  background: var(--dsw-specific-sidebar-fill);
+  border: var(--dsh-glass-border);
+  border-radius: var(--dsh-glass-radius);
+  box-shadow: var(--dsh-glass-shadow);
   color: var(--dsw-alias-label-primary);
   font-size: 14px;
   /* The sidebar is elevated above the conversation surface, so a revealed
      scrollbar uses the l2 pair. .quietBars hides it without changing layout. */
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+/* Background + blur live on a ::before layer, never on .root itself:
+   backdrop-filter/filter/transform on an element makes THAT element a
+   containing block for its own position:fixed descendants (CSS Containing
+   Block spec) -- ui-settings-general's SettingsRoot renders its full-viewport
+   `.overlay { position: fixed; inset: 0 }` as an ordinary (non-portaled) DOM
+   descendant of whichever sidebar/conversation subtree is open, so a blurred
+   .root would silently confine that "full-viewport" overlay to the sidebar's
+   own narrow box instead of the real viewport. A ::before pseudo-element has
+   no descendants of its own, so it can carry the blur with zero risk to
+   anything nested inside .root, portaled or not. Paints behind .root's real
+   children purely by DOM/paint order (generated content is inserted first) --
+   no z-index needed, avoiding its own stacking-context pitfalls. */
+.root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--dsw-specific-sidebar-fill);
+  backdrop-filter: var(--dsh-glass-backdrop);
+  pointer-events: none;
 }
 
 /* Rail geometry (figma rail spec): 36x36 control boxes centered in the 56px
