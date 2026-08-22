@@ -69,9 +69,19 @@
 
 /* Rail geometry (figma rail spec): 36x36 control boxes centered in the 56px
    rail (10px side padding), 12px vertical rhythm, 18px from the rail top to
-   the whale's box (24px to the 24-wide whale glyph itself). */
+   the whale's box (24px to the 24-wide whale glyph itself). The AppFrame
+   grid track supplying that 56px is unchanged by nexus's glass card (see
+   .root's own comment), but the card's margin + border both eat into
+   .root's border-box content width from inside that track -- uncompensated,
+   the rail's content box narrows to 56 - 2*glass-margin - 2*border-width -
+   2*10, well under the 36px the icon controls need, clipping them against
+   descendants that (unlike .root) actually clip overflow (e.g. ui-workspace's
+   WorkspaceBrowser rail icons, inside its regionArea host's `overflow:
+   hidden`). Subtracting both from the side padding keeps the content box at
+   36px regardless of theme; every other theme leaves both tokens at 0px, so
+   this stays the bare 10px. */
 .root.collapsed {
-  padding: 18px 10px 6px;
+  padding: 18px calc(10px - var(--dsh-glass-margin) - var(--dsh-glass-border-width)) 6px;
 }
 
 /* Scrollbars in the column are a pointer affordance: the shell adds this

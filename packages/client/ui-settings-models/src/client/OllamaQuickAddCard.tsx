@@ -7,8 +7,15 @@
  * protocol, model entry) a user would otherwise have to know to type.
  *
  * Local mode carries no API key field at all and auto-probes the endpoint on
- * mount, since a local Ollama server needs neither: the profile it commits
- * never sets `apiKeyEnv`. Cloud mode requires a key before Create enables,
+ * mount, since a local Ollama server needs no credential of its own: the
+ * profile it commits never sets `apiKeyEnv`. It does commit a placeholder
+ * `Authorization` header, though — pi-ai's `openai-completions` client
+ * refuses to build a request with neither an `apiKey` nor an `Authorization`
+ * header present, regardless of whether the endpoint checks it, so a fully
+ * keyless profile can discover models (a plain GET) but can never complete a
+ * chat request. Ollama ignores the header's value, so any placeholder clears
+ * pi-ai's client-side gate without implying real authentication. Cloud mode
+ * requires a key before Create enables,
  * unlike the generic card's optional one, because Ollama Cloud has no
  * unauthenticated path. Switching modes only replaces a field still holding
  * its previous mode's default, so a user's own edits are never clobbered.
@@ -60,6 +67,14 @@ const CLOUD_DEFAULTS: ModeDefaults = {
 }
 
 const DEFAULTS: Readonly<Record<Mode, ModeDefaults>> = { local: LOCAL_DEFAULTS, cloud: CLOUD_DEFAULTS }
+
+/**
+ * Local mode's placeholder `Authorization` header. Ollama's local server
+ * never checks it, but pi-ai's `openai-completions` client throws before any
+ * request goes out when a route names neither an `apiKey` nor this header —
+ * see the module doc comment above.
+ */
+const LOCAL_AUTH_HEADER = { Authorization: 'Bearer ollama' }
 
 /** Props of {@link OllamaQuickAddCard}. */
 export interface OllamaQuickAddCardProps {
@@ -199,6 +214,7 @@ export function OllamaQuickAddCard(props: OllamaQuickAddCardProps): ReactNode {
       const profile = {
         ...displayName.length === 0 ? {} : { displayName },
         ...storesKey ? { apiKeyEnv: keyRef } : {},
+        ...mode === 'local' ? { headers: LOCAL_AUTH_HEADER } : {},
         api: API,
         baseURL,
         models: models.map(model => ({ ...model })),

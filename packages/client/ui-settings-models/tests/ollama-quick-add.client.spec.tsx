@@ -107,7 +107,7 @@ describe('local mode', () => {
     await waitFor(() => { expect(sameDiscover).toHaveBeenCalledTimes(2) })
   })
 
-  it('creates a keyless profile and never writes a credential', async () => {
+  it('creates a keyless profile with a placeholder auth header, and never writes a credential', async () => {
     const discover = vi.fn(() => Promise.resolve(ok({ models: [{ id: 'llama3' }] })))
     const { mutate, set, onClose } = mountCard({}, { discover })
 
@@ -122,6 +122,7 @@ describe('local mode', () => {
         path: ['providers', 'ollama'],
         value: {
           displayName: 'Ollama (local)',
+          headers: { Authorization: 'Bearer ollama' },
           api: 'openai-completions',
           baseURL: 'http://localhost:11434/v1',
           models: [{ id: 'llama3' }],

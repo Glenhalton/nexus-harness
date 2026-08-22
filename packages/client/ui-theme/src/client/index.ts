@@ -177,6 +177,10 @@ const NEXUS_GLASS_TOKENS: ThemeTokens = Object.freeze({
   '--dsh-glass-radius': '24px',
   '--dsh-glass-shadow': '0 12px 40px rgba(0, 0, 0, 0.4)',
   '--dsh-glass-border': '1px solid rgba(255, 255, 255, 0.12)',
+  // Numeric twin of the border above (SidebarRoot.module.css's collapsed
+  // rail padding calc()s against it to keep the rail's 36px icon geometry
+  // exact once the glass margin/border eat into .root's content box).
+  '--dsh-glass-border-width': '1px',
   '--dsh-frame-bg': 'transparent',
   '--dsh-frame-sidebar-bg': 'transparent',
   '--dsh-frame-border': 'none',

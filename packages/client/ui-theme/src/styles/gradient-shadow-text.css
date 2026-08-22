@@ -20,6 +20,7 @@ body {
   --dsh-glass-radius: 0px;
   --dsh-glass-shadow: none;
   --dsh-glass-border: none;
+  --dsh-glass-border-width: 0px;
   --dsh-frame-bg: var(--dsw-alias-bg-base);
   --dsh-frame-sidebar-bg: var(--dsw-specific-sidebar-fill);
   --dsh-frame-border: 1px solid var(--dsw-alias-border-l1);
