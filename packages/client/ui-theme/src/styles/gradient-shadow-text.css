@@ -9,6 +9,31 @@ body {
     0 0 1px 0 rgba(0, 0, 0, 0.2), 0 0 4px 0 rgba(0, 0, 0, 0.02), 0 12px 32px 0 rgba(0, 0, 0, 0.08);
   /* blur filter */
   --dsw-mask-blur: blur(2px);
+
+  /* Glass re-theme geometry/effect knobs (packages/client/ui-layout,
+     ui-sidebar, ui-conversation). Scheme-invariant no-op defaults: only the
+     nexus ThemeDefinition (ui-theme/src/client/index.ts) overrides them, so
+     every other theme renders with zero blur/margin/radius/shadow, exactly
+     as before these tokens existed. */
+  --dsh-glass-backdrop: none;
+  --dsh-glass-margin: 0px;
+  --dsh-glass-radius: 0px;
+  --dsh-glass-shadow: none;
+  --dsh-glass-border: none;
+  --dsh-frame-bg: var(--dsw-alias-bg-base);
+  --dsh-frame-sidebar-bg: var(--dsw-specific-sidebar-fill);
+  --dsh-frame-border: 1px solid var(--dsw-alias-border-l1);
+  --dsh-ambient-display: none;
+  /* ui-trajectory's TrajectoryView.root: defaults to its own current opaque
+     fill so light/dark/system are unaffected; nexus goes transparent so the
+     already-glass ConversationRoot card shows through instead of painting a
+     flat rectangle on top of it. */
+  --dsh-trajectory-bg: var(--dsw-alias-bg-layer-1);
+  /* AppFrame's .detailsCol divider: distinct from --dsh-frame-border (which
+     defaults to the sidebar's l1 shade) because the details column already
+     uses l2 today -- a shared token would subtly recolor it for every theme,
+     not just nexus. */
+  --dsh-frame-details-border: 1px solid var(--dsw-alias-border-l2);
 }
 
 body[data-ds-dark-theme] {

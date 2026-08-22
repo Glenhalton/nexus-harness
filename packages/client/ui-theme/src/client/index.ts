@@ -141,10 +141,63 @@ const NEXUS_ACCENT_TOKENS: ThemeTokens = Object.freeze({
   '--dsw-specific-sidebar-nav-item-active-accent': 'rgba(52, 211, 153, 0.14)',
 })
 
+/**
+ * Nexus's glass re-theme: floating frosted panels over an animated ambient
+ * background, applied entirely through this same token-override channel —
+ * no new DOM attribute, no ThemePresenter change. Every consuming CSS rule
+ * (packages/client/ui-layout/ui-sidebar/ui-conversation) reads these via
+ * `var(--token, <no-op default>)`, so `light`/`dark`/`system` — which never
+ * set these tokens — render byte-identical to before this existed.
+ *
+ * Several tokens exist solely to resolve a double-paint collision: an
+ * existing alias token was read by two elements that need to diverge under
+ * glass (one must go transparent to reveal the ambient layer, the other must
+ * become the translucent card surface). `--dsh-frame-bg`,
+ * `--dsh-frame-sidebar-bg`, and `--dsh-frame-details-border` take over
+ * AppFrame's outer canvas/column paint specifically, leaving
+ * `--dsw-alias-bg-base` and `--dsw-specific-sidebar-fill` free for
+ * ConversationRoot's, DetailsPanel's, and SidebarRoot's own card surfaces
+ * (via `--dsw-specific-conversation-fill` / `--dsw-specific-details-fill`).
+ *
+ * `background`/`backdrop-filter` never land directly on a real panel element
+ * (SidebarRoot.root, ConversationRoot.root, DetailsPanel.root, InputBar.card)
+ * — each hosts them on a `::before` pseudo-element instead. `backdrop-filter`
+ * makes its element a CSS containing block for its own `position: fixed`
+ * descendants; ui-settings-general's SettingsRoot renders a non-portaled
+ * `.overlay { position: fixed; inset: 0 }` as an ordinary descendant of
+ * whichever panel is open, so a blurred panel would confine that
+ * "full-viewport" overlay to its own narrow box. A pseudo-element has no
+ * descendants of its own, so it carries the blur with zero risk.
+ */
+const NEXUS_GLASS_TOKENS: ThemeTokens = Object.freeze({
+  '--dsh-glass-backdrop': 'blur(20px) saturate(140%)',
+  '--dsh-glass-margin': '8px',
+  // Matches Settings' own panel radius (SettingsRoot.module.css) so a glass
+  // card and the modal that floats over it read as one visual family.
+  '--dsh-glass-radius': '24px',
+  '--dsh-glass-shadow': '0 12px 40px rgba(0, 0, 0, 0.4)',
+  '--dsh-glass-border': '1px solid rgba(255, 255, 255, 0.12)',
+  '--dsh-frame-bg': 'transparent',
+  '--dsh-frame-sidebar-bg': 'transparent',
+  '--dsh-frame-border': 'none',
+  '--dsh-ambient-display': 'block',
+  '--dsh-trajectory-bg': 'transparent',
+  '--dsh-frame-details-border': 'none',
+  '--dsw-specific-conversation-fill': 'rgba(18, 24, 31, 0.62)',
+  '--dsw-specific-details-fill': 'rgba(18, 24, 31, 0.62)',
+  '--dsw-specific-sidebar-fill': 'rgba(22, 28, 36, 0.68)',
+  '--dsw-specific-input-major': 'rgba(255, 255, 255, 0.06)',
+  '--dsw-alias-border-l2-darkmode-thin': 'rgba(255, 255, 255, 0.16)',
+})
+
 const BUILTIN_THEMES: readonly ThemeDefinition[] = Object.freeze([
   Object.freeze({ id: 'light', colorScheme: 'light' as const, tokens: Object.freeze({}) }),
   Object.freeze({ id: 'dark', colorScheme: 'dark' as const, tokens: Object.freeze({}) }),
-  Object.freeze({ id: 'nexus', colorScheme: 'dark' as const, tokens: NEXUS_ACCENT_TOKENS }),
+  Object.freeze({
+    id: 'nexus',
+    colorScheme: 'dark' as const,
+    tokens: Object.freeze({ ...NEXUS_ACCENT_TOKENS, ...NEXUS_GLASS_TOKENS }),
+  }),
 ])
 
 const BUILTIN_INSPECT_TOKENS: readonly ThemeTokenInspection[] = Object.freeze([
