@@ -3,12 +3,40 @@
    to layout; this fills whatever the column gives. */
 
 .root {
+  /* Anchors .root::before; see the ::before comment for why the blur must
+     never land directly on .root (CSS Containing Block spec — matches
+     SidebarRoot/ConversationRoot/InputBar). */
+  position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* --dsh-glass-margin defaults to 0px (gradient-shadow-text.css), making
+     this calc() exactly 100% -- identical to the old bare `height: 100%` for
+     light/dark/system. Only nexus sets a non-zero margin. */
+  height: calc(100% - (var(--dsh-glass-margin) * 2));
+  margin: var(--dsh-glass-margin);
   min-width: 0;
-  border-left: 1px solid var(--dsw-alias-border-l2);
-  background: var(--dsw-alias-bg-base);
+  border: var(--dsh-glass-border);
+  /* Overrides the shorthand's left edge only, so the panel keeps its own
+     divider by default (identical to the old bare 1px l2 rule) while nexus's
+     --dsh-glass-border still frames the other three sides. Defaults to the
+     old hardcoded value (gradient-shadow-text.css); nexus goes none, since
+     the outer AppFrame divider (--dsh-frame-details-border) also disappears
+     and this panel's own glass border reads as the seam instead. */
+  border-left: var(--dsh-frame-details-border);
+  border-radius: var(--dsh-glass-radius);
+  box-shadow: var(--dsh-glass-shadow);
+}
+
+/* Background + blur live on a ::before layer, never on .root itself — see
+   SidebarRoot.module.css for the full containing-block rationale. */
+.root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--dsw-specific-details-fill);
+  backdrop-filter: var(--dsh-glass-backdrop);
+  pointer-events: none;
 }
 
 /* figma RightSidebar header frame (I54:42735;43:36451): pad 14/12/12/12, gap 8. */

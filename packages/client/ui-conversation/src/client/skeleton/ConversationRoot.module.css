@@ -4,11 +4,23 @@
    a 2px active bar. */
 
 .root {
+  /* Anchors .root::before (see that rule for why the blur cannot live here
+     directly: backdrop-filter would make .root a containing block for its
+     own position:fixed descendants, breaking any non-portaled full-viewport
+     overlay rendered inside the conversation column -- see SidebarRoot's
+     matching comment for the concrete symptom this caused). */
+  position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  /* --dsh-glass-margin defaults to 0px (gradient-shadow-text.css), making
+     this calc() exactly 100% -- identical to the old bare `height: 100%` for
+     light/dark/system. Only nexus sets a non-zero margin. */
+  height: calc(100% - (var(--dsh-glass-margin) * 2));
+  margin: var(--dsh-glass-margin);
   min-width: 0;
-  background: var(--dsw-alias-bg-base);
+  border: var(--dsh-glass-border);
+  border-radius: var(--dsh-glass-radius);
+  box-shadow: var(--dsh-glass-shadow);
 
   /* Shared width axis for the whole column: one content width W
      (--dsh-chat-content-width) for the transcript, the dock cards
@@ -23,6 +35,24 @@
   --dsh-composer-card-max-width: calc(var(--dsh-chat-content-width) + 32px);
   --dsh-composer-side-clearance: 16px;
   --dsh-composer-dock-inset: 8px;
+}
+
+/* Background + blur on a ::before layer, not .root itself -- see .root's own
+   comment for the containing-block reason. --dsw-specific-conversation-fill
+   defaults to var(--dsw-alias-bg-base) (design-platform.css) -- identical to
+   the old direct reference for light/dark/system. A dedicated token, rather
+   than reading --dsw-alias-bg-base directly, because AppFrame's own outer
+   canvas (--dsh-frame-bg) also derives from --dsw-alias-bg-base and must go
+   fully transparent under nexus, while this card must stay a translucent,
+   blurred surface -- the two cannot share one token once they diverge. */
+.root::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--dsw-specific-conversation-fill);
+  backdrop-filter: var(--dsh-glass-backdrop);
+  pointer-events: none;
 }
 
 .header {
@@ -264,11 +294,14 @@
      solid below — px stops, not %, so a growing draft only widens the solid
      region and the fade band never stretches. The 0px stop is bg-base at
      zero alpha (not white, which the figma export hardcodes) so both themes
-     fade from their own base. */
+     fade from their own base. Reads --dsw-specific-conversation-fill (same
+     token as .root's own background, above) rather than --dsw-alias-bg-base
+     directly, so the fade always matches the card's actual current
+     background -- translucent under nexus, opaque everywhere else. */
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--dsw-alias-bg-base) 0%, transparent) 0px,
-    var(--dsw-alias-bg-base) 36px
+    color-mix(in srgb, var(--dsw-specific-conversation-fill) 0%, transparent) 0px,
+    var(--dsw-specific-conversation-fill) 36px
   );
 }
 

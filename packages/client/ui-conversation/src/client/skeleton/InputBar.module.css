@@ -54,7 +54,6 @@
      l2-darkmode-thin pair. Fill: the input surface token (elevated in dark). */
   border: 1px solid var(--dsw-alias-border-l2-darkmode-thin);
   border-radius: 22px;
-  background: var(--dsw-specific-input-major);
   box-shadow: var(--dsw-shadow-lv2);
   font-size: 16px;
   line-height: 24px;
@@ -65,6 +64,25 @@
      (see ui-theme styles/scrollbar.css for the rebinding contract). */
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+/* Background + blur on a ::before layer, not .card itself: backdrop-filter
+   on .card would make it a containing block for its own position:fixed
+   descendants (e.g. a non-portaled dropdown/menu popping out of the
+   composer), silently confining any such overlay to the card's own box
+   instead of the real viewport -- see SidebarRoot.module.css's matching
+   comment for the concrete bug this caused elsewhere. Defaults (transparent
+   background var, `none` blur -- gradient-shadow-text.css) render nothing
+   extra for light/dark/system; .card's own background is now unset there
+   too, so the ::before is the only paint source in every theme. */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--dsw-specific-input-major);
+  backdrop-filter: var(--dsh-glass-backdrop);
+  pointer-events: none;
 }
 
 /* No-workspace trigger state: dashed l4 stroke marks the card as a pick-a-
