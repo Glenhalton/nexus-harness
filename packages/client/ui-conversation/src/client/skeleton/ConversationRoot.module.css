@@ -8,8 +8,12 @@
      directly: backdrop-filter would make .root a containing block for its
      own position:fixed descendants, breaking any non-portaled full-viewport
      overlay rendered inside the conversation column -- see SidebarRoot's
-     matching comment for the concrete symptom this caused). */
+     matching comment for the concrete symptom this caused). isolation
+     scopes ::before's z-index to this stacking context; see that rule for
+     why the z-index itself is required (neither property creates a
+     containing block for position:fixed, so this stays safe). */
   position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   /* --dsh-glass-margin defaults to 0px (gradient-shadow-text.css), making
@@ -49,6 +53,14 @@
   content: '';
   position: absolute;
   inset: 0;
+  /* Required: position:absolute with z-index:auto paints in CSS's
+     "positioned descendants" step, which comes AFTER plain in-flow block
+     content -- without this, the glass layer painted on top of the
+     transcript/header instead of behind it (SidebarRoot's matching comment
+     has the full mechanism and the concrete symptom it caused). .root's
+     `isolation: isolate` scopes this z-index to .root's own stacking
+     context. */
+  z-index: -1;
   border-radius: inherit;
   background: var(--dsw-specific-conversation-fill);
   backdrop-filter: var(--dsh-glass-backdrop);

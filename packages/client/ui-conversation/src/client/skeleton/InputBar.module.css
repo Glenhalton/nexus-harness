@@ -41,6 +41,9 @@
 .card {
   box-sizing: border-box;
   position: relative; /* overlay anchor positioning context */
+  /* Scopes .card::before's z-index to this stacking context; see that
+     rule's comment for why the z-index is required. */
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   /* figma Input 75:8208: 12px between the text area and the button row; 10px
@@ -79,6 +82,12 @@
   content: '';
   position: absolute;
   inset: 0;
+  /* Required: position:absolute with z-index:auto paints in CSS's
+     "positioned descendants" step, after plain in-flow block content --
+     without this the glass layer paints over the draft text and action row
+     instead of behind them (SidebarRoot.module.css has the full mechanism
+     and the concrete symptom it caused there). */
+  z-index: -1;
   border-radius: inherit;
   background: var(--dsw-specific-input-major);
   backdrop-filter: var(--dsh-glass-backdrop);

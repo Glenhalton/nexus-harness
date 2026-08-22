@@ -5,8 +5,10 @@
 .root {
   /* Anchors .root::before; see the ::before comment for why the blur must
      never land directly on .root (CSS Containing Block spec — matches
-     SidebarRoot/ConversationRoot/InputBar). */
+     SidebarRoot/ConversationRoot/InputBar). isolation scopes ::before's
+     z-index to this stacking context. */
   position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   /* --dsh-glass-margin defaults to 0px (gradient-shadow-text.css), making
@@ -33,6 +35,11 @@
   content: '';
   position: absolute;
   inset: 0;
+  /* Required: position:absolute with z-index:auto paints in CSS's
+     "positioned descendants" step, after plain in-flow block content --
+     without this the glass layer paints over the header/body instead of
+     behind them (SidebarRoot's matching comment has the full mechanism). */
+  z-index: -1;
   border-radius: inherit;
   background: var(--dsw-specific-details-fill);
   backdrop-filter: var(--dsh-glass-backdrop);
