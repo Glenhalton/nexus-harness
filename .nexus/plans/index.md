@@ -27,3 +27,4 @@ generated_at: "2026-08-22"
 | ID | Title | Status | Owner | Updated | Phase |
 |----|-------|--------|-------|---------|-------|
 | [`bootstrap-@deepseek-ai/dsh-root-roadmap`](./bootstrap-@deepseek-ai/dsh-root-roadmap.md) | Bootstrap initial roadmap | 📝 draft | unassigned | 2026-08-22 | bootstrap |
+| [`ambient-context-injection`](./ambient-context-injection.md) | Ambient context injection for NEXUS's context pack | 📝 draft | unassigned | 2026-08-24 | feature-delivery |
