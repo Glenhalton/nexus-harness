@@ -20,9 +20,10 @@ import ts from 'typescript'
  * that will never be published, so the finding has no real consumer to warn.
  */
 const LOCAL_DEPENDENCY_ALLOWLIST: ReadonlySet<string> = new Set([
-  // Depends on @nexus-framework/cli via `file:` until its new ./mcp subpath
-  // export ships a published version; see the package's README.
-  'packages/experimental/tool-nexus-brain',
+  // Empty as of 2026-08-24: tool-nexus-brain moved to a real semver
+  // dependency once @nexus-framework/cli's ./mcp subpath was confirmed
+  // live on the published npm 1.4.0. Kept as reusable infrastructure for
+  // the next package that needs a temporary local-dependency exception.
 ])
 
 const CONCURRENCY_ENV = 'DSH_PUBLINT_CONCURRENCY'

@@ -27,3 +27,17 @@ Each tool's zod input schema (defined only in nexus-cli's `server.ts`, for MCP t
 ## Consequences
 
 Any agent session composed in this harness can mount `@deepseek-ai/dsh-experimental-tool-nexus-brain` and get the same NEXUS project intelligence a NEXUS-aware coding agent gets over stdio, with every call captured by this harness's session log automatically. The trade-off: `@nexus-framework/cli`'s numeric-range zod validation (`nexus_query_knowledge`'s `limit`, `nexus_get_context`'s `maxChars`) is not visible in the Cordis tool schema — the underlying handlers already clamp out-of-range values internally, so this is a schema-visibility gap, not a correctness gap. The package cannot be promoted out of `packages/experimental/` until nexus-cli publishes a version carrying the `./mcp` export and the dependency becomes an ordinary semver range.
+
+
+## Update, 2026-08-24
+
+The `file:` dependency was replaced with `"@nexus-framework/cli": "^1.4.0"` —
+the `./mcp` subpath export was confirmed live on the already-published npm
+`1.4.0` (not merely committed; checked the registry directly), so the
+"has not published yet" premise above no longer holds. The
+`LOCAL_DEPENDENCY_ALLOWLIST` entry in `scripts/publint-all.ts` was removed
+accordingly (the allowlist mechanism itself stays, empty, for the next
+package that needs it). The package still lives under `packages/experimental/`
+for now — dropping a real dependency doesn't by itself answer whether this
+belongs in a first-class `packages/*/` group instead; that's a separate,
+not-yet-made decision, not a blocker this update resolves.
