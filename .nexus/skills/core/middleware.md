@@ -18,7 +18,7 @@ status: active
 ## When to Read This
 Read this skill before creating or modifying middleware for request handling, authentication, or route protection in this project.
 
-## Contex
+## Context
 This project uses Next.js middleware for request-level operations including authentication, redirects, and request/response modifications. Middleware runs before the request reaches the route handler and can modify the request, response, or redirect the user. It's ideal for cross-cutting concerns that affect multiple routes or the entire application.
 
 ## Steps
@@ -49,7 +49,7 @@ This project uses Next.js middleware for request-level operations including auth
 
 ## Example
 
-```typescrip
+```typescript
 // app/middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -62,25 +62,25 @@ export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const isProtectedRoute = protectedRoutes.some(route => path.startsWith(route));
   const isAuthRoute = authRoutes.some(route => path.startsWith(route));
-
+  
   // Get auth token from cookies
   const token = request.cookies.get('auth_token')?.value;
-
+  
   // Redirect authenticated users away from auth pages
   if (isAuthRoute && token) {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }
-
+  
   // Protect routes that require authentication
   if (isProtectedRoute && !token) {
     const absoluteURL = new URL('/login', request.url);
     return NextResponse.redirect(absoluteURL.toString());
   }
-
+  
   // Add custom headers
   const response = NextResponse.next();
   response.headers.set('x-custom-header', 'nexus-app');
-
+  
   return response;
 }
 
@@ -99,7 +99,7 @@ export const config = {
 };
 ```
 
-```typescrip
+```typescript
 // app/middleware.ts - Advanced example with rate limiting
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -110,16 +110,16 @@ const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 function isRateLimited(identifier: string, limit: number, windowMs: number): boolean {
   const now = Date.now();
   const record = rateLimitMap.get(identifier);
-
+  
   if (!record || now > record.resetTime) {
     rateLimitMap.set(identifier, { count: 1, resetTime: now + windowMs });
     return false;
   }
-
+  
   if (record.count >= limit) {
     return true;
   }
-
+  
   record.count++;
   return false;
 }
@@ -128,7 +128,7 @@ export function middleware(request: NextRequest) {
   const ip = request.ip || 'unknown';
   const userAgent = request.headers.get('user-agent') || 'unknown';
   const identifier = `${ip}-${userAgent}`;
-
+  
   // Apply rate limiting to API routes
   if (request.nextUrl.pathname.startsWith('/api/')) {
     if (isRateLimited(identifier, 100, 60000)) { // 100 requests per minute
@@ -140,18 +140,18 @@ export function middleware(request: NextRequest) {
       });
     }
   }
-
+  
   // Add security headers
   const response = NextResponse.next();
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-
+  
   return response;
 }
 ```
 
-```typescrip
+```typescript
 // app/middleware.ts - Locale detection example
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
@@ -160,12 +160,12 @@ const DEFAULT_LOCALE = 'en';
 const SUPPORTED_LOCALES = ['en', 'fr', 'es', 'de'];
 
 function getLocaleFromRequest(request: NextRequest): string {
-  // Check URL firs
+  // Check URL first
   const urlLocale = request.nextUrl.pathname.split('/')[1];
   if (SUPPORTED_LOCALES.includes(urlLocale)) {
     return urlLocale;
   }
-
+  
   // Check accept-language header
   const acceptLanguage = request.headers.get('accept-language');
   if (acceptLanguage) {
@@ -173,32 +173,32 @@ function getLocaleFromRequest(request: NextRequest): string {
       .split(',')
       .map(lang => lang.split(';')[0].trim())
       .find(lang => SUPPORTED_LOCALES.includes(lang));
-
+    
     if (preferredLocale) {
       return preferredLocale;
     }
   }
-
+  
   return DEFAULT_LOCALE;
 }
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-
+  
   // Skip middleware for API routes and static files
   if (pathname.startsWith('/api/') || pathname.includes('.')) {
     return NextResponse.next();
   }
-
+  
   const locale = getLocaleFromRequest(request);
-
-  // Redirect to locale-prefixed URL if not already presen
+  
+  // Redirect to locale-prefixed URL if not already present
   if (!SUPPORTED_LOCALES.some(loc => pathname.startsWith(`/${loc}/`)) && !SUPPORTED_LOCALES.includes(pathname.split('/')[1])) {
     const url = request.nextUrl.clone();
     url.pathname = `/${locale}${pathname}`;
     return NextResponse.redirect(url);
   }
-
+  
   return NextResponse.next();
 }
 ```

@@ -1,5 +1,5 @@
 ---
-skill: deploymen
+skill: deployment
 version: 1.0.0
 framework: shared
 category: workflow
@@ -18,11 +18,11 @@ status: active
 ## When to Read This
 Read this skill when setting up deployment pipelines, configuring environments, or deploying applications to production.
 
-## Contex
+## Context
 This project follows modern deployment practices with automated CI/CD pipelines, environment isolation, and zero-downtime deployments. We use containerization, infrastructure as code, and monitoring to ensure reliable and scalable deployments. The deployment process should be repeatable, automated, and safe for production environments.
 
 ## Steps
-1. Set up CI/CD pipeline with automated testing and deploymen
+1. Set up CI/CD pipeline with automated testing and deployment
 2. Configure environment-specific settings and secrets
 3. Use containerization (Docker) for consistent deployments
 4. Implement proper environment isolation (dev, staging, production)
@@ -70,44 +70,44 @@ env:
 
 jobs:
   test:
-    runs-on: ubuntu-lates
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
           node-version: '18'
           cache: 'npm'
-
+      
       - run: npm ci
-      - run: npm run lin
+      - run: npm run lint
       - run: npm run typecheck
-      - run: npm tes
+      - run: npm test
       - run: npm run build
 
   build-and-push:
-    needs: tes
-    runs-on: ubuntu-lates
+    needs: test
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
+    
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
         with:
           node-version: '18'
           cache: 'npm'
-
+      
       - run: npm ci
       - run: npm run build
-
+      
       - name: Log in to Container Registry
         uses: docker/login-action@v2
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
+      
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v4
@@ -117,7 +117,7 @@ jobs:
             type=ref,event=branch
             type=ref,event=pr
             type=sha,prefix={{branch}}-
-
+      
       - name: Build and push Docker image
         uses: docker/build-push-action@v4
         with:
@@ -130,10 +130,10 @@ jobs:
 
   deploy-staging:
     needs: build-and-push
-    runs-on: ubuntu-lates
+    runs-on: ubuntu-latest
     environment: staging
     if: github.ref == 'refs/heads/main'
-
+    
     steps:
       - name: Deploy to staging
         uses: azure/webapps-deploy@v2
@@ -144,10 +144,10 @@ jobs:
 
   deploy-production:
     needs: [build-and-push, deploy-staging]
-    runs-on: ubuntu-lates
+    runs-on: ubuntu-latest
     environment: production
     if: github.ref == 'refs/heads/main'
-
+    
     steps:
       - name: Deploy to production
         uses: azure/webapps-deploy@v2
@@ -185,7 +185,7 @@ RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
 
 # Copy built application
-COPY --from=builder --chown=nextjs:nodejs /app/dist ./dis
+COPY --from=builder --chown=nextjs:nodejs /app/dist ./dist
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/package*.json ./
 
@@ -200,7 +200,7 @@ CMD ["node", "dist/server.js"]
 ```
 
 ```yaml
-# ✅ Docker Compose for local developmen
+# ✅ Docker Compose for local development
 # docker-compose.yml
 version: '3.8'
 
@@ -210,7 +210,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=developmen
+      - NODE_ENV=development
       - DATABASE_URL=postgresql://user:password@db:5432/myapp_dev
     volumes:
       - .:/app
@@ -239,8 +239,8 @@ volumes:
   postgres_data:
 ```
 
-```typescrip
-// ✅ Environment configuration managemen
+```typescript
+// ✅ Environment configuration management
 // config/environment.ts
 interface EnvironmentConfig {
   nodeEnv: 'development' | 'production' | 'test';
@@ -264,7 +264,7 @@ interface EnvironmentConfig {
 
 function loadEnvironment(): EnvironmentConfig {
   const nodeEnv = (process.env.NODE_ENV as EnvironmentConfig['nodeEnv']) || 'development';
-
+  
   return {
     nodeEnv,
     port: parseInt(process.env.PORT || '3000', 10),
@@ -299,11 +299,11 @@ provider "aws" {
 resource "aws_s3_bucket" "app_bucket" {
   bucket = "${var.app_name}-assets-${random_id.bucket_suffix.hex}"
   acl    = "private"
-
+  
   versioning {
     enabled = true
   }
-
+  
   server_side_encryption_configuration {
     rule {
       apply_server_side_encryption_by_default {
@@ -320,15 +320,15 @@ resource "aws_rds_cluster" "app_database" {
   database_name      = var.database_name
   master_username    = var.database_username
   master_password    = var.database_password
-
+  
   backup_retention_period = 7
   preferred_backup_window = "03:00-04:00"
-
+  
   vpc_security_group_ids = [aws_security_group.database.id]
   db_subnet_group_name   = aws_db_subnet_group.app_subnet_group.name
-
+  
   tags = {
-    Environment = var.environmen
+    Environment = var.environment
     Project     = var.app_name
   }
 }
@@ -337,17 +337,17 @@ resource "aws_app_service" "app" {
   name       = var.app_name
   region     = var.aws_region
   account_id = var.aws_account_id
-
+  
   source_configuration {
-    bucket_name = aws_s3_bucket.app_bucket.bucke
+    bucket_name = aws_s3_bucket.app_bucket.bucket
     bucket_key  = "app.zip"
   }
-
+  
   environment {
-    NODE_ENV = var.environmen
+    NODE_ENV = var.environment
     PORT     = "3000"
   }
-
+  
   scaling {
     min_capacity = 2
     max_capacity = 10
@@ -355,8 +355,8 @@ resource "aws_app_service" "app" {
 }
 ```
 
-```typescrip
-// ✅ Health check endpoin
+```typescript
+// ✅ Health check endpoint
 // src/health.ts
 import { Request, Response } from 'express';
 import { database } from './database';

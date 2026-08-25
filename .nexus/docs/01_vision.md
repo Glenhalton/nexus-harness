@@ -4,7 +4,7 @@ id: "01_vision"
 title: "Product Vision & Requirements"
 status: template
 confidence: low
-last_updated: "2026-08-22"
+last_updated: "2026-08-25"
 ---
 
 # Product Vision & Requirements
@@ -14,7 +14,7 @@ last_updated: "2026-08-22"
 ---
 
 ## 🎯 Product Vision
-Nexus harness is the cordis powered harness of nexus
+<!-- What are you building and why? What problem does it solve? -->
 
 ## 👥 Target Users
 <!-- 2-3 personas: role, goals, pain points, needs -->

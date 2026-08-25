@@ -18,7 +18,7 @@ status: active
 ## When to Read This
 Read this skill before implementing error handling in components, API routes, or server actions in this project.
 
-## Contex
+## Context
 This project uses Next.js error boundaries and error pages for client-side errors, and proper HTTP status codes for server-side errors. Error handling should be consistent across the application with user-friendly messages and proper logging. Always distinguish between expected errors (validation, not found) and unexpected errors (server errors, network issues).
 
 ## Steps
@@ -35,9 +35,9 @@ This project uses Next.js error boundaries and error pages for client-side error
 - Global error boundary: `app/global-error.tsx` for app-wide errors
 - HTTP status codes: 400 for bad request, 404 for not found, 500 for server error
 - Error messages: User-friendly with actionable guidance
-- Logging: Structured logging with error contex
+- Logging: Structured logging with error context
 - Error types: Custom error classes for different error categories
-- Recovery: Provide retry mechanisms and fallback conten
+- Recovery: Provide retry mechanisms and fallback content
 
 ## Anti-Patterns — Never Do This
 - ❌ Do not expose sensitive information in error messages
@@ -133,7 +133,7 @@ export class ErrorBoundary extends Component<Props, State> {
 }
 ```
 
-```typescrip
+```typescript
 // lib/errors.ts - Custom error classes
 export class ValidationError extends Error {
   constructor(message: string, public field?: string) {
@@ -157,7 +157,7 @@ export class NetworkError extends Error {
 }
 ```
 
-```typescrip
+```typescript
 // app/api/users/route.ts - API error handling
 import { NextResponse } from 'next/server';
 import { NotFoundError, ValidationError } from '@/lib/errors';
@@ -166,17 +166,17 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
-
+    
     if (!id) {
       throw new ValidationError('User ID is required');
     }
-
+    
     const user = await getUserById(id);
-
+    
     if (!user) {
       throw new NotFoundError('User');
     }
-
+    
     return NextResponse.json({ data: user });
   } catch (error) {
     if (error instanceof ValidationError) {
@@ -185,17 +185,17 @@ export async function GET(request: Request) {
         { status: 400 }
       );
     }
-
+    
     if (error instanceof NotFoundError) {
       return NextResponse.json(
         { error: error.message },
         { status: 404 }
       );
     }
-
+    
     // Log unexpected errors
     console.error('Unexpected error in GET /api/users:', error);
-
+    
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

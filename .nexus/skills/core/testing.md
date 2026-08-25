@@ -18,7 +18,7 @@ status: active
 ## When to Read This
 Read this skill before writing any tests for components, pages, API routes, or utilities in this project.
 
-## Contex
+## Context
 This project uses Jest with React Testing Library for component testing and Vitest for unit tests. Tests should follow the testing pyramid: many unit tests, fewer integration tests, and minimal E2E tests. All tests should be co-located with the code they test when possible, using the `.test.ts` or `.spec.ts` naming convention. Mock external dependencies and use realistic test data.
 
 ## Steps
@@ -64,21 +64,21 @@ describe('UserCard', () => {
 
   it('renders user information correctly', () => {
     render(<UserCard user={mockUser} />);
-
+    
     expect(screen.getByText('John Doe')).toBeInTheDocument();
     expect(screen.getByText('john@example.com')).toBeInTheDocument();
   });
 
   it('applies correct CSS classes', () => {
     render(<UserCard user={mockUser} />);
-
+    
     const card = screen.getByRole('article');
     expect(card).toHaveClass('rounded-lg', 'border', 'p-4');
   });
 });
 ```
 
-```typescrip
+```typescript
 // lib/api.test.ts
 import { fetchUserData } from './api';
 
@@ -98,7 +98,7 @@ describe('API functions', () => {
     });
 
     const result = await fetchUserData('1');
-
+    
     expect(fetch).toHaveBeenCalledWith('/api/users/1');
     expect(result).toEqual(mockResponse);
   });
@@ -114,7 +114,7 @@ describe('API functions', () => {
 });
 ```
 
-```typescrip
+```typescript
 // __tests__/integration/api.test.ts
 import { createMocks } from 'node-mocks-http';
 import handler from '../../pages/api/users';

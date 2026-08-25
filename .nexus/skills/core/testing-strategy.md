@@ -18,7 +18,7 @@ status: active
 ## When to Read This
 Read this skill when setting up testing infrastructure, writing tests, or determining the appropriate testing approach for a feature.
 
-## Contex
+## Context
 This project follows a testing pyramid approach with different levels of testing for different purposes. Unit tests form the foundation, integration tests verify component interactions, and E2E tests validate complete user workflows. Testing is automated in CI/CD and considered a critical part of the development process. All new features should include appropriate test coverage.
 
 ## Steps
@@ -53,7 +53,7 @@ This project follows a testing pyramid approach with different levels of testing
 
 ## Example
 
-```typescrip
+```typescript
 // ✅ Unit test for a utility function
 import { calculateTotal } from './cart';
 
@@ -80,14 +80,14 @@ describe('calculateTotal', () => {
 
   it('should handle discount calculation', () => {
     const items = [{ price: 100, quantity: 1 }];
-    const result = calculateTotal(items, 0.1); // 10% discoun
+    const result = calculateTotal(items, 0.1); // 10% discount
     expect(result).toBe(90);
   });
 });
 ```
 
-```typescrip
-// ✅ Integration test for API endpoin
+```typescript
+// ✅ Integration test for API endpoint
 import { createMocks } from 'node-mocks-http';
 import handler from '../../pages/api/users';
 
@@ -144,7 +144,7 @@ describe('/api/users', () => {
 });
 ```
 
-```typescrip
+```typescript
 // ✅ Component test with React Testing Library
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -161,7 +161,7 @@ jest.mock('react-i18next', () => ({
 describe('LoginForm', () => {
   it('should render form elements', () => {
     render(<LoginForm />);
-
+    
     expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
@@ -200,8 +200,8 @@ describe('LoginForm', () => {
 });
 ```
 
-```typescrip
-// ✅ E2E test with Playwrigh
+```typescript
+// ✅ E2E test with Playwright
 import { test, expect } from '@playwright/test';
 
 test.describe('User Authentication', () => {
@@ -236,7 +236,7 @@ test.describe('User Authentication', () => {
 });
 ```
 
-```typescrip
+```typescript
 // ✅ Test utilities and setup
 // src/__tests__/utils.ts
 import { render } from '@testing-library/react';
@@ -254,7 +254,7 @@ export const createTestQueryClient = () => {
 
 export const renderWithProviders = (ui: React.ReactElement, options = {}) => {
   const queryClient = createTestQueryClient();
-
+  
   const Wrapper = ({ children }: { children: React.ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>

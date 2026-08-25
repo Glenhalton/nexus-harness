@@ -18,13 +18,13 @@ status: active
 ## When to Read This
 Read this skill when designing or implementing user interfaces, forms, navigation, or any interactive elements.
 
-## Contex
+## Context
 Accessibility ensures that all users, including those with disabilities, can use our application effectively. This project follows WCAG 2.1 AA guidelines and prioritizes semantic HTML, keyboard navigation, screen reader compatibility, and inclusive design patterns. Accessibility is not an afterthought—it's built into our development process.
 
 ## Steps
 1. Use semantic HTML elements for proper document structure
 2. Ensure all interactive elements are keyboard accessible
-3. Provide alternative text for images and non-text conten
+3. Provide alternative text for images and non-text content
 4. Implement proper form labels and error messages
 5. Use sufficient color contrast and don't rely on color alone
 6. Add ARIA labels and roles where needed for complex widgets
@@ -54,12 +54,12 @@ Accessibility ensures that all users, including those with disabilities, can use
 ## Example
 
 ```tsx
-// ✅ Accessible button componen
-export function Button({
-  children,
-  onClick,
+// ✅ Accessible button component
+export function Button({ 
+  children, 
+  onClick, 
   variant = 'primary',
-  disabled = false
+  disabled = false 
 }: {
   children: React.ReactNode;
   onClick: () => void;
@@ -88,23 +88,23 @@ export function LoginForm() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     const newErrors: typeof errors = {};
-
+    
     if (!email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = 'Please enter a valid email address';
     }
-
+    
     if (!password) {
       newErrors.password = 'Password is required';
     } else if (password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
     }
-
+    
     setErrors(newErrors);
-
+    
     if (Object.keys(newErrors).length === 0) {
       // Submit form
     }
@@ -116,7 +116,7 @@ export function LoginForm() {
         <label htmlFor="email" className="form-label">
           Email Address <span aria-label="required">*</span>
         </label>
-        <inpu
+        <input
           type="email"
           id="email"
           value={email}
@@ -136,7 +136,7 @@ export function LoginForm() {
         <label htmlFor="password" className="form-label">
           Password <span aria-label="required">*</span>
         </label>
-        <inpu
+        <input
           type="password"
           id="password"
           value={password}
@@ -161,12 +161,12 @@ export function LoginForm() {
 ```
 
 ```tsx
-// ✅ Accessible modal with focus managemen
-export function Modal({
-  isOpen,
-  onClose,
-  title,
-  children
+// ✅ Accessible modal with focus management
+export function Modal({ 
+  isOpen, 
+  onClose, 
+  title, 
+  children 
 }: {
   isOpen: boolean;
   onClose: () => void;
@@ -264,11 +264,11 @@ textarea:focus {
 ```
 
 ## Notes
-- Use semantic HTML5 elements for better screen reader suppor
+- Use semantic HTML5 elements for better screen reader support
 - Implement skip links for keyboard navigation
 - Test color contrast with tools like WebAIM Contrast Checker
 - Use `aria-live` regions for dynamic content updates
-- Provide text alternatives for all non-text conten
+- Provide text alternatives for all non-text content
 - Ensure all functionality is available via keyboard
 - Use proper heading hierarchy (h1, h2, h3, etc.)
 - Consider users with motor disabilities when designing interactions

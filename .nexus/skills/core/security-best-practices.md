@@ -18,12 +18,12 @@ status: active
 ## When to Read This
 Read this skill before implementing authentication, handling user input, working with APIs, or deploying applications.
 
-## Contex
+## Context
 Security is a fundamental requirement for all applications. This project follows security-first principles to protect user data, prevent common vulnerabilities, and maintain system integrity. Security measures should be implemented at every layer: input validation, authentication, authorization, data handling, and deployment.
 
 ## Steps
 1. Validate and sanitize all user inputs at the application boundary
-2. Implement proper authentication and session managemen
+2. Implement proper authentication and session management
 3. Use HTTPS and secure headers in all communications
 4. Follow the principle of least privilege for access controls
 5. Regularly update dependencies and scan for vulnerabilities
@@ -35,7 +35,7 @@ Security is a fundamental requirement for all applications. This project follows
 - Input validation: Use schema validation libraries (Zod, Joi, Yup) for all inputs
 - Authentication: JWT tokens with proper expiration and refresh mechanisms
 - Authorization: Role-based access control (RBAC) with middleware
-- Passwords: bcrypt or Argon2 for hashing, never store plaintex
+- Passwords: bcrypt or Argon2 for hashing, never store plaintext
 - CORS: Configure properly to prevent unauthorized cross-origin requests
 - Rate limiting: Implement to prevent abuse and DoS attacks
 - Security headers: Use helmet.js or equivalent for HTTP security headers
@@ -53,7 +53,7 @@ Security is a fundamental requirement for all applications. This project follows
 
 ## Example
 
-```typescrip
+```typescript
 // ✅ Secure input validation
 import { z } from 'zod';
 
@@ -65,10 +65,10 @@ const userSchema = z.object({
 
 export async function createUser(userData: unknown) {
   const validatedData = userSchema.parse(userData);
-
+  
   // Hash password before storing
   const hashedPassword = await bcrypt.hash(validatedData.password, 12);
-
+  
   return database.users.create({
     ...validatedData,
     password: hashedPassword,
@@ -76,7 +76,7 @@ export async function createUser(userData: unknown) {
 }
 ```
 
-```typescrip
+```typescript
 // ✅ Secure authentication middleware
 import jwt from 'jsonwebtoken';
 
@@ -98,8 +98,8 @@ export function authenticateToken(req: Request, res: Response, next: NextFunctio
 }
 ```
 
-```typescrip
-// ✅ Secure API endpoin
+```typescript
+// ✅ Secure API endpoint
 export async function getUserProfile(req: Request, res: Response) {
   try {
     const userId = req.user.id;

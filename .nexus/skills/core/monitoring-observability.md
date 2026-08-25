@@ -18,7 +18,7 @@ status: active
 ## When to Read This
 Read this skill when setting up monitoring, implementing logging, or configuring observability for applications and infrastructure.
 
-## Contex
+## Context
 Monitoring and observability are essential for maintaining system reliability, performance, and user experience. This project implements the three pillars of observability: logs, metrics, and traces. We use structured logging, comprehensive metrics collection, and distributed tracing to gain insights into system behavior and quickly identify and resolve issues.
 
 ## Steps
@@ -53,7 +53,7 @@ Monitoring and observability are essential for maintaining system reliability, p
 
 ## Example
 
-```typescrip
+```typescript
 // ✅ Structured logging implementation
 import winston from 'winston';
 import { v4 as uuidv4 } from 'uuid';
@@ -128,7 +128,7 @@ const logger = new Logger({
 export { logger };
 ```
 
-```typescrip
+```typescript
 // ✅ Metrics collection with Prometheus
 import { register, Counter, Histogram, Gauge } from 'prom-client';
 
@@ -159,16 +159,16 @@ const databaseConnections = new Gauge({
 // Middleware to track HTTP metrics
 export function metricsMiddleware(req: Request, res: Response, next: NextFunction) {
   const start = Date.now();
-
+  
   res.on('finish', () => {
     const duration = (Date.now() - start) / 1000;
-
+    
     httpRequestsTotal.inc({
       method: req.method,
       route: req.route?.path || req.path,
       status_code: res.statusCode,
     });
-
+    
     httpRequestDuration.observe(
       {
         method: req.method,
@@ -177,7 +177,7 @@ export function metricsMiddleware(req: Request, res: Response, next: NextFunctio
       duration
     );
   });
-
+  
   next();
 }
 
@@ -190,14 +190,14 @@ export function updateDatabaseConnections(count: number) {
   databaseConnections.set(count);
 }
 
-// Metrics endpoin
+// Metrics endpoint
 export function metricsHandler(req: Request, res: Response) {
   res.set('Content-Type', register.contentType);
   res.end(register.metrics());
 }
 ```
 
-```typescrip
+```typescript
 // ✅ Distributed tracing with OpenTelemetry
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
@@ -225,16 +225,16 @@ import { trace } from '@opentelemetry/api';
 
 export async function getUserWithTracing(userId: string) {
   const tracer = trace.getTracer('user-service', '1.0.0');
-
+  
   return tracer.startActiveSpan('get-user', async (span) => {
     try {
       span.setAttributes({
         'user.id': userId,
         'operation.type': 'database-query',
       });
-
+      
       const user = await database.users.findUnique({ where: { id: userId } });
-
+      
       if (!user) {
         span.setStatus({ code: 2, message: 'User not found' });
       } else {
@@ -243,7 +243,7 @@ export async function getUserWithTracing(userId: string) {
           'user.created_at': user.createdAt.toISOString(),
         });
       }
-
+      
       return user;
     } catch (error) {
       span.recordException(error as Error);
@@ -256,7 +256,7 @@ export async function getUserWithTracing(userId: string) {
 }
 ```
 
-```typescrip
+```typescript
 // ✅ Error tracking with Sentry
 import * as Sentry from '@sentry/node';
 import { ProfilingIntegration } from '@sentry/profiling-node';
@@ -320,7 +320,7 @@ export function trackPerformance(operation: string, fn: () => Promise<any>) {
 }
 ```
 
-```typescrip
+```typescript
 // ✅ Health checks and readiness probes
 interface HealthStatus {
   status: 'healthy' | 'unhealthy';

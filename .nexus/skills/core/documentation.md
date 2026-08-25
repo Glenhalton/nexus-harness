@@ -18,14 +18,14 @@ status: active
 ## When to Read This
 Read this skill when writing or updating documentation, code comments, or README files in this project.
 
-## Contex
+## Context
 Documentation is essential for code maintainability, onboarding new developers, and ensuring consistent understanding across the team. This project values clear, concise, and up-to-date documentation that serves both technical and non-technical audiences. Documentation should be treated with the same care as production code.
 
 ## Steps
 1. Identify the audience and purpose of the documentation
 2. Choose the appropriate format (README, inline comments, API docs, etc.)
 3. Write clear, concise content focused on the reader's needs
-4. Use consistent formatting and style throughou
+4. Use consistent formatting and style throughout
 5. Include examples and code snippets where helpful
 6. Review and update documentation when code changes
 7. Ensure documentation is easily discoverable
@@ -48,23 +48,23 @@ Documentation is essential for code maintainability, onboarding new developers, 
 
 ## Example
 
-```typescrip
+```typescript
 /**
  * Validates user input for registration
- *
+ * 
  * @param email - User's email address
  * @param password - User's password (minimum 8 characters)
  * @param name - User's full name
- * @returns Promise resolving to validation resul
- *
+ * @returns Promise resolving to validation result
+ * 
  * @example
- * ```typescrip
+ * ```typescript
  * const result = await validateRegistration({
  *   email: 'user@example.com',
  *   password: 'securepassword123',
  *   name: 'John Doe'
  * });
- *
+ * 
  * if (result.isValid) {
  *   // Proceed with registration
  * } else {
@@ -98,7 +98,7 @@ npm run dev
 ```
 
 ## Usage
-```typescrip
+```typescript
 import { exampleFunction } from './example';
 
 const result = exampleFunction('input');
@@ -106,14 +106,14 @@ console.log(result);
 ```
 
 ## API Reference
-- `exampleFunction(input: string): string` - Processes input and returns resul
+- `exampleFunction(input: string): string` - Processes input and returns result
 
 ## Contributing
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
 4. Add tests
-5. Submit a pull reques
+5. Submit a pull request
 
 ## License
 MIT

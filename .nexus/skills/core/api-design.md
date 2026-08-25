@@ -18,7 +18,7 @@ status: active
 ## When to Read This
 Read this skill when designing, implementing, or modifying APIs (REST, GraphQL, or other API types).
 
-## Contex
+## Context
 APIs are the contract between frontend and backend systems. This project follows RESTful principles for HTTP APIs and GraphQL best practices for GraphQL APIs. APIs should be consistent, predictable, well-documented, and versioned appropriately. Error handling, authentication, and rate limiting are essential considerations for all APIs.
 
 ## Steps
@@ -53,7 +53,7 @@ APIs are the contract between frontend and backend systems. This project follows
 
 ## Example
 
-```typescrip
+```typescript
 // ✅ REST API endpoint design
 // GET /api/v1/users - List users with filtering
 // GET /api/v1/users/123 - Get specific user
@@ -89,10 +89,10 @@ export async function getUsers(query: UserListQuery): Promise<{
   };
 }> {
   const { page = 1, limit = 20, search, sortBy, sortOrder } = query;
-
+  
   const filters = search ? { name: { contains: search } } : {};
   const orderBy = sortBy ? { [sortBy]: sortOrder || 'asc' } : { createdAt: 'desc' };
-
+  
   const [users, total] = await Promise.all([
     database.users.findMany({
       where: filters,
@@ -136,7 +136,7 @@ export async function createUser(userData: {
 }
 ```
 
-```typescrip
+```typescript
 // ✅ GraphQL schema design
 // schema.graphql
 type User {
@@ -165,9 +165,9 @@ type Query {
     sortBy: UserSortField = CREATED_AT
     sortOrder: SortOrder = DESC
   ): UserConnection!
-
+  
   user(id: ID!): User
-
+  
   posts(
     userId: ID
     page: Int = 1
@@ -219,7 +219,7 @@ type PageInfo {
 }
 ```
 
-```typescrip
+```typescript
 // ✅ Error handling and responses
 interface ApiResponse<T> {
   success: boolean;
@@ -285,7 +285,7 @@ export function errorHandler(
 }
 ```
 
-```typescrip
+```typescript
 // ✅ Rate limiting and validation
 import rateLimit from 'express-rate-limit';
 import { z } from 'zod';

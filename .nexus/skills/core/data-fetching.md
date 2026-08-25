@@ -18,7 +18,7 @@ status: active
 ## When to Read This
 Read this skill before implementing data fetching in any component or route in this project.
 
-## Contex
+## Context
 This project uses Next.js App Router with server components by default. Data fetching should prioritize server-side fetching for SEO and performance. Use `fetch()` with proper caching strategies, and consider using TanStack Query (React Query) for client-side state management when needed. Always implement proper error handling and loading states.
 
 ## Steps
@@ -62,9 +62,9 @@ export default async function DashboardPage() {
       tags: ['dashboard'],
     },
   });
-
+  
   const data = await response.json();
-
+  
   return (
     <div>
       <h1>Dashboard</h1>

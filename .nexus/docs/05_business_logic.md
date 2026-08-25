@@ -4,12 +4,12 @@ id: "05_business_logic"
 title: "Business Logic"
 status: template
 confidence: low
-last_updated: "2026-08-22"
+last_updated: "2026-08-25"
 ---
 
 # Business Logic
 
-**Project:** @Deepseek Ai/Dsh Roo
+**Project:** @Deepseek Ai/Dsh Root
 
 ---
 
@@ -21,3 +21,4 @@ last_updated: "2026-08-22"
 
 ## 🧮 Algorithms
 <!-- Non-trivial logic: scoring, sorting, filtering, calculations -->
+

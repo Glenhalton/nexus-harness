@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "generatedAt": "2026-08-22T18:12:59.195Z",
+  "generatedAt": "2026-08-25T12:02:47.686Z",
   "config": {
     "projectName": "@deepseek-ai/dsh-root",
     "displayName": "@Deepseek Ai/Dsh Root",
@@ -22,7 +22,7 @@
     }
   },
   "cli": {
-    "version": "1.4.0",
+    "version": "1.5.1",
     "name": "@nexus-framework/cli"
   },
   "localOnly": false

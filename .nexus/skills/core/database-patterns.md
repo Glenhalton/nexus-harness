@@ -18,7 +18,7 @@ status: active
 ## When to Read This
 Read this skill when designing database schemas, writing queries, implementing migrations, or optimizing database performance.
 
-## Contex
+## Context
 This project follows database best practices for schema design, query optimization, and data integrity. We use ORMs or query builders for type safety and maintainability while ensuring efficient database operations. Database design should support the application's data access patterns and scale appropriately with data growth.
 
 ## Steps
@@ -53,7 +53,7 @@ This project follows database best practices for schema design, query optimizati
 
 ## Example
 
-```typescrip
+```typescript
 // ✅ Database schema design with Prisma
 // schema.prisma
 generator client {
@@ -70,12 +70,12 @@ model User {
   email     String   @unique
   name      String?
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedA
-
+  updatedAt DateTime @updatedAt
+  
   // Relationships
   posts     Post[]
   profile   Profile?
-
+  
   @@map("users")
 }
 
@@ -85,23 +85,23 @@ model Post {
   content   String?
   published Boolean  @default(false)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedA
-
+  updatedAt DateTime @updatedAt
+  
   // Relationships
   authorId String
   author   User     @relation(fields: [authorId], references: [id])
   tags     Tag[]    @relation("PostTags")
-
+  
   @@map("posts")
 }
 
 model Tag {
   id    String @id @default(cuid())
   name  String @unique
-
+  
   // Relationships
   posts Post[] @relation("PostTags")
-
+  
   @@map("tags")
 }
 
@@ -109,15 +109,15 @@ model Profile {
   id     String @id @default(cuid())
   bio    String?
   userId String @unique
-
+  
   // Relationships
   user   User   @relation(fields: [userId], references: [id])
-
+  
   @@map("profiles")
 }
 ```
 
-```typescrip
+```typescript
 // ✅ Efficient querying with proper relationships
 import { PrismaClient } from '@prisma/client';
 
@@ -141,7 +141,7 @@ export async function getUsersWithPosts() {
 // ✅ Pagination with cursor-based approach
 export async function getPostsPaginated(cursor?: string, limit: number = 10) {
   const where = cursor ? { id: { gt: cursor } } : {};
-
+  
   const [posts, totalCount] = await Promise.all([
     prisma.post.findMany({
       where,
@@ -200,7 +200,7 @@ export async function createUserWithProfile(userData: {
 }
 ```
 
-```typescrip
+```typescript
 // ✅ Database migrations with proper rollback
 // migration.sql
 -- CreateTable
@@ -218,12 +218,12 @@ CREATE TABLE "users" (
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- AddForeignKey (if needed)
-ALTER TABLE "posts" ADD CONSTRAINT "posts_author_id_fkey"
-FOREIGN KEY ("author_id") REFERENCES "users"("id")
+ALTER TABLE "posts" ADD CONSTRAINT "posts_author_id_fkey" 
+FOREIGN KEY ("author_id") REFERENCES "users"("id") 
 ON DELETE RESTRICT ON UPDATE CASCADE;
 ```
 
-```typescrip
+```typescript
 // ✅ Query optimization with proper indexing
 // Database indexes for common query patterns
 // These would be added via migrations
@@ -241,7 +241,7 @@ CREATE INDEX "idx_posts_created_at" ON "posts"("created_at");
 CREATE INDEX "idx_posts_published_created" ON "posts"("published", "created_at");
 ```
 
-```typescrip
+```typescript
 // ✅ Connection pooling configuration
 // database.ts
 import { PrismaClient } from '@prisma/client';
@@ -274,7 +274,7 @@ process.on('SIGTERM', async () => {
 export default prisma;
 ```
 
-```typescrip
+```typescript
 // ✅ Database error handling
 export class DatabaseError extends Error {
   constructor(
@@ -299,7 +299,7 @@ export async function handleDatabaseOperation<T>(
         error.meta
       );
     }
-
+    
     if (error.code === 'P2025') {
       throw new DatabaseError(
         'RECORD_NOT_FOUND',
@@ -307,7 +307,7 @@ export async function handleDatabaseOperation<T>(
         error.meta
       );
     }
-
+    
     if (error.code === 'P2010') {
       throw new DatabaseError(
         'FOREIGN_KEY_CONSTRAINT',
@@ -315,7 +315,7 @@ export async function handleDatabaseOperation<T>(
         error.meta
       );
     }
-
+    
     // Generic database error
     throw new DatabaseError(
       'DATABASE_ERROR',

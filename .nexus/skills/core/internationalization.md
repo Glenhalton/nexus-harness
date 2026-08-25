@@ -18,7 +18,7 @@ status: active
 ## When to Read This
 Read this skill when implementing multi-language support, handling date/number formatting, or designing for global audiences.
 
-## Contex
+## Context
 This project supports multiple languages and regions. Internationalization (i18n) ensures our application can be adapted to various languages and regions without engineering changes. Localization (l10n) adapts the application to specific locales with translated content and regional formatting. We use a consistent approach across all frameworks to maintain user experience quality.
 
 ## Steps
@@ -28,7 +28,7 @@ This project supports multiple languages and regions. Internationalization (i18n
 4. Handle date, time, number, and currency formatting
 5. Support right-to-left (RTL) languages if needed
 6. Test translations in context and validate completeness
-7. Consider cultural differences in design and conten
+7. Consider cultural differences in design and content
 8. Implement fallback mechanisms for missing translations
 
 ## Patterns We Use
@@ -46,14 +46,14 @@ This project supports multiple languages and regions. Internationalization (i18n
 - ❌ Do not assume English is the default for all users
 - ❌ Do not concatenate translated strings (breaks grammar)
 - ❌ Do not ignore text expansion (translated text can be 30-40% longer)
-- ❌ Do not forget to translate UI elements like tooltips and alt tex
+- ❌ Do not forget to translate UI elements like tooltips and alt text
 - ❌ Do not assume date formats are universal
 - ❌ Do not ignore RTL language requirements
-- ❌ Do not translate technical terms without contex
+- ❌ Do not translate technical terms without context
 
 ## Example
 
-```typescrip
+```typescript
 // ✅ Translation file structure (en.json)
 {
   "common": {
@@ -84,8 +84,8 @@ This project supports multiple languages and regions. Internationalization (i18n
 }
 ```
 
-```typescrip
-// ✅ Using translations in Reac
+```typescript
+// ✅ Using translations in React
 import { useTranslation } from 'react-i18next';
 
 export function LoginForm() {
@@ -98,11 +98,11 @@ export function LoginForm() {
   return (
     <form>
       <h2>{t('auth.login.title')}</h2>
-
+      
       <div>
         <label htmlFor="email">{t('auth.login.email')}</label>
-        <inpu
-          type="email"
+        <input 
+          type="email" 
           id="email"
           placeholder={t('auth.login.email')}
         />
@@ -110,8 +110,8 @@ export function LoginForm() {
 
       <div>
         <label htmlFor="password">{t('auth.login.password')}</label>
-        <inpu
-          type="password"
+        <input 
+          type="password" 
           id="password"
           placeholder={t('auth.login.password')}
         />
@@ -121,14 +121,14 @@ export function LoginForm() {
         {t('auth.login.submit')}
       </button>
 
-      <button
-        type="button"
+      <button 
+        type="button" 
         onClick={() => changeLanguage('es')}
       >
         Español
       </button>
-      <button
-        type="button"
+      <button 
+        type="button" 
         onClick={() => changeLanguage('fr')}
       >
         Français
@@ -138,7 +138,7 @@ export function LoginForm() {
 }
 ```
 
-```typescrip
+```typescript
 // ✅ Date and number formatting
 import { useTranslation } from 'react-i18next';
 
@@ -152,11 +152,11 @@ export function Dashboard() {
       <p>
         {t('common.welcome')}, {t('auth.welcome', { name: 'John' })}
       </p>
-
+      
       <p>
         {t('common.today')}: {now.toLocaleDateString(i18n.language)}
       </p>
-
+      
       <p>
         {t('common.balance')}: {new Intl.NumberFormat(i18n.language, {
           style: 'currency',
@@ -168,7 +168,7 @@ export function Dashboard() {
 }
 ```
 
-```typescrip
+```typescript
 // ✅ Pluralization handling
 export function ItemList({ items }: { items: any[] }) {
   const { t } = useTranslation();
@@ -176,13 +176,13 @@ export function ItemList({ items }: { items: any[] }) {
   return (
     <div>
       <h3>
-        {t('count', {
+        {t('count', { 
           count: items.length,
           postProcess: 'interval',
           interval: [0, 1, 2]
         })}
       </h3>
-
+      
       {items.map(item => (
         <div key={item.id}>{item.name}</div>
       ))}
@@ -191,7 +191,7 @@ export function ItemList({ items }: { items: any[] }) {
 }
 ```
 
-```typescrip
+```typescript
 // ✅ RTL support with CSS-in-JS
 import { useTranslation } from 'react-i18next';
 import styled from 'styled-components';
@@ -199,7 +199,7 @@ import styled from 'styled-components';
 const Container = styled.div<{ isRTL: boolean }>`
   direction: ${props => props.isRTL ? 'rtl' : 'ltr'};
   text-align: ${props => props.isRTL ? 'right' : 'left'};
-
+  
   /* Use logical properties when possible */
   padding-inline-start: 1rem;
   margin-inline-end: 1rem;
@@ -217,7 +217,7 @@ export function Layout() {
 }
 ```
 
-```typescrip
+```typescript
 // ✅ Translation utility with fallback
 export function translate(key: string, options?: any): string {
   const translations = {
@@ -229,7 +229,7 @@ export function translate(key: string, options?: any): string {
 
   const currentLang = getCurrentLanguage();
   const translation = translations[currentLang]?.[key];
-
+  
   if (!translation) {
     console.warn(`Missing translation for key: ${key}`);
     return translations['en']?.[key] || key;
@@ -254,5 +254,5 @@ function interpolate(template: string, variables: any): string {
 - Consider cultural differences in colors, symbols, and imagery
 - Support bidirectional text for languages like Arabic and Hebrew
 - Use locale-aware sorting and comparison functions
-- Plan for translation updates and version managemen
+- Plan for translation updates and version management
 - Test accessibility with screen readers in different languages

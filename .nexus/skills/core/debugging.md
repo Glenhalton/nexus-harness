@@ -18,11 +18,11 @@ status: active
 ## When to Read This
 Read this skill when investigating bugs, errors, or unexpected behavior in the codebase.
 
-## Contex
+## Context
 Effective debugging requires a systematic approach to isolate, reproduce, and fix issues. This project emphasizes understanding the root cause rather than applying quick fixes. Use debugging tools, logging, and systematic investigation to identify issues. Document findings to prevent similar problems in the future.
 
 ## Steps
-1. Reproduce the issue consistently in a development environmen
+1. Reproduce the issue consistently in a development environment
 2. Gather relevant logs, error messages, and stack traces
 3. Isolate the problem by narrowing down potential causes
 4. Use debugging tools (breakpoints, logging, profiling) to investigate
@@ -50,7 +50,7 @@ Effective debugging requires a systematic approach to isolate, reproduce, and fi
 
 ## Example
 
-```typescrip
+```typescript
 // Before: Poor debugging approach
 function calculateTotal(items) {
   let total = 0;
@@ -65,7 +65,7 @@ function calculateTotal(items: Array<{ price: number }>) {
   if (!Array.isArray(items)) {
     throw new Error('Items must be an array');
   }
-
+  
   let total = 0;
   for (const item of items) {
     if (typeof item.price !== 'number' || isNaN(item.price)) {
@@ -78,19 +78,19 @@ function calculateTotal(items: Array<{ price: number }>) {
 }
 ```
 
-```typescrip
+```typescript
 // Debugging with proper logging
 function processUserInput(input: string) {
   try {
     console.log('Processing input:', input);
-
+    
     if (!input || input.trim() === '') {
       throw new Error('Empty input provided');
     }
-
+    
     const result = JSON.parse(input);
     console.log('Parsed result:', result);
-
+    
     return result;
   } catch (error) {
     console.error('Error processing input:', {
@@ -105,7 +105,7 @@ function processUserInput(input: string) {
 
 ## Notes
 - Use `debugger` statements sparingly and remove them before committing
-- Create unit tests that reproduce the bug before fixing i
+- Create unit tests that reproduce the bug before fixing it
 - Use git bisect to find when a regression was introduced
 - Check browser console and network tabs for frontend issues
 - Use performance profiling tools for performance-related bugs

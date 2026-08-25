@@ -4,7 +4,7 @@ id: "04_api_contracts"
 title: "API Contracts"
 status: template
 confidence: low
-last_updated: "2026-08-22"
+last_updated: "2026-08-25"
 ---
 
 # API Contracts

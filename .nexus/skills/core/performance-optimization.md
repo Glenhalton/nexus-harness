@@ -18,7 +18,7 @@ status: active
 ## When to Read This
 Read this skill when experiencing slow application performance, high response times, or when building performance-critical features.
 
-## Contex
+## Context
 Performance is critical for user experience and business metrics. This project prioritizes fast load times, responsive interactions, and efficient resource usage. Performance optimization should be considered throughout development, not just as an afterthought. Use profiling tools to identify bottlenecks and measure improvements.
 
 ## Steps
@@ -53,11 +53,11 @@ Performance is critical for user experience and business metrics. This project p
 
 ## Example
 
-```typescrip
+```typescript
 // ✅ Efficient data fetching with pagination
 export async function getUsers(page: number, limit: number = 20) {
   const offset = (page - 1) * limit;
-
+  
   const [users, total] = await Promise.all([
     database.users.findMany({
       skip: offset,
@@ -82,8 +82,8 @@ export async function getUsers(page: number, limit: number = 20) {
 }
 ```
 
-```typescrip
-// ✅ Lazy loading with Reac
+```typescript
+// ✅ Lazy loading with React
 import { lazy, Suspense } from 'react';
 
 const LazyDashboard = lazy(() => import('./Dashboard'));
@@ -104,7 +104,7 @@ export function App() {
 }
 ```
 
-```typescrip
+```typescript
 // ✅ Caching with Redis
 import Redis from 'ioredis';
 
@@ -112,40 +112,40 @@ const redis = new Redis();
 
 export async function getCachedUser(userId: string) {
   const cacheKey = `user:${userId}`;
-
-  // Try cache firs
+  
+  // Try cache first
   const cached = await redis.get(cacheKey);
   if (cached) {
     return JSON.parse(cached);
   }
-
+  
   // Fetch from database
   const user = await database.users.findUnique({ where: { id: userId } });
-
+  
   // Cache for 10 minutes
   if (user) {
     await redis.setex(cacheKey, 600, JSON.stringify(user));
   }
-
+  
   return user;
 }
 ```
 
-```typescrip
+```typescript
 // ✅ Debounced search to prevent excessive API calls
 import { useState, useCallback } from 'react';
 
 export function useDebouncedSearch(searchFn: (query: string) => Promise<any>, delay: number = 300) {
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-
+  
   const debouncedSearch = useCallback(
     debounce(async (query: string) => {
       if (!query.trim()) {
         setResults([]);
         return;
       }
-
+      
       setLoading(true);
       try {
         const result = await searchFn(query);
@@ -158,7 +158,7 @@ export function useDebouncedSearch(searchFn: (query: string) => Promise<any>, de
     }, delay),
     [searchFn, delay]
   );
-
+  
   return { results, loading, debouncedSearch };
 }
 
