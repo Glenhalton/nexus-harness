@@ -1,11 +1,13 @@
 /**
- * Model-facing NEXUS project-brain tools. Wraps `@nexus-framework/cli`'s 17
+ * Model-facing NEXUS project-brain tools. Wraps `@nexus-framework/cli`'s 16
  * MCP tool handlers as Cordis-registered tools on `ctx.tools`, so an agent
  * running inside this harness gets the same project intelligence (plan
  * state, knowledge base, skills, doctor drift report, alignment gate) a
  * NEXUS-aware coding agent gets over stdio — with every call flowing through
  * this harness's own tool pipeline and therefore its session log, instead of
- * a separate MCP transport.
+ * a separate MCP transport. The scoped-context composition itself
+ * (`nexus_get_context`) has moved to the ambient, tool-call-free
+ * `@deepseek-ai/dsh-experimental-nexus-brain-context` companion package.
  * @module @deepseek-ai/dsh-experimental-tool-nexus-brain
  */
 
@@ -19,7 +21,6 @@ import {
   doctorTool,
   getActivePlanTool,
   getAgentTool,
-  getContextTool,
   getHandoffTool,
   getPlanTool,
   getSkillTool,
@@ -56,7 +57,7 @@ export const Config: z<Config> = z.object({
 })
 
 /**
- * Register the 17 `nexus_*` tools on `ctx.tools`.
+ * Register the 16 `nexus_*` tools on `ctx.tools`.
  *
  * The brain context is resolved once, at plugin load: a `projectRoot` with
  * no `.nexus/` directory throws synchronously here rather than on the first
@@ -252,22 +253,6 @@ export function apply(ctx: Context, config: Config): void {
     output: { schema: { type: 'json' }, render: asJson },
     presentCall: args => ({ card: 'generic', title: 'NEXUS: get handoff', kind: 'other', rawInput: args }),
     execute: args => getHandoffTool(brainCtx, args).then(toJson),
-  }))
-
-  ctx.tools.register(defineTool({
-    name: 'nexus_get_context',
-    description:
-      'Compose ONE scoped NEXUS context pack for a task: active plan slice, alignment gate, vitals, '
-      + 'matching skills, matching knowledge entries, and recipe docs — bounded by maxChars. '
-      + 'Prefer this over separate nexus_get_active_plan / nexus_query_knowledge / nexus_list_skills calls.',
-    parameters: {
-      task: { type: 'string', required: true, description: 'Task description — used to match knowledge entries and skill triggers.' },
-      agent: { type: 'string', description: 'Agent whose context recipe scopes the composition.' },
-      maxChars: { type: 'integer', description: 'Soft cap on composed payload size (2000-60000, default 12000).' },
-    },
-    output: { schema: { type: 'json' }, render: asJson },
-    presentCall: args => ({ card: 'generic', title: 'NEXUS: get context', kind: 'other', rawInput: args }),
-    execute: args => getContextTool(brainCtx, args).then(toJson),
   }))
 
   ctx.tools.register(defineTool({

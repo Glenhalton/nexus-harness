@@ -41,3 +41,37 @@ package that needs it). The package still lives under `packages/experimental/`
 for now — dropping a real dependency doesn't by itself answer whether this
 belongs in a first-class `packages/*/` group instead; that's a separate,
 not-yet-made decision, not a blocker this update resolves.
+
+## Update, 2026-08-24 (2): `nexus_get_context` moved to ambient injection
+
+`nexus_get_context` — the one tool of the 17 that composes a scoped pack
+(plan slice, knowledge, skills, vitals) rather than reading or writing one
+narrow thing — has been removed from this package's 17 tools, leaving 16.
+It moved to a new sibling package, `@deepseek-ai/dsh-experimental-nexus-brain-context`,
+which prepends an `agent/pre-step` listener and injects the same composed
+pack as a durable message on step 1 of every turn, with no tool call
+required. Both packages depend on the same published `@nexus-framework/cli`
+range (see the update above) — nothing about this split reintroduces the
+`file:` dependency.
+
+The motivation is the small-budget, unreliable-tool-calling harness
+profiles `nexus-harness-work.md` already worries about: a target that
+cannot or does not reliably issue tool calls previously had no path to the
+brain's context at all. Ambient injection removes that dependency — the
+model gets grounding whether or not it calls anything — at the cost of
+losing the deliberately-phrased `task` string a model-issued
+`nexus_get_context(task)` call allowed; the ambient path derives `task`
+heuristically, by concatenating the turn's own user-message text (see that
+package's README).
+
+The two packages remain independent and composable: a session can mount
+`tool-nexus-brain` alone (explicit calls, no ambient cost),
+`nexus-brain-context` alone (ambient only, no round trip), or both (ambient
+grounding plus an explicit call for anything needing a hand-phrased task).
+This was a deliberate removal rather than a deprecation-and-keep: with the
+ambient path covering the same read-only composition, keeping both as
+tool-callable would just be two ways to ask for the same thing, and
+NEXUS's own `nexus_get_context` description already told models to prefer
+it over separate `nexus_get_active_plan`/`nexus_query_knowledge`/`nexus_list_skills`
+calls — advice easier to follow ambiently than to enforce through a second
+call site. Recorded in the `ambient-context-injection` NEXUS plan.

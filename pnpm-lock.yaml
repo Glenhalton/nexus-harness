@@ -4190,6 +4190,49 @@ importers:
         specifier: workspace:^
         version: link:../../subagent/subagent-spawn-in-process
 
+  packages/experimental/nexus-brain-context:
+    dependencies:
+      '@deepseek-ai/schemastery':
+        specifier: link:../../../vendor/schemastery
+        version: link:../../../vendor/schemastery
+      '@nexus-framework/cli':
+        specifier: ^1.4.0
+        version: 1.4.0(@types/node@26.1.2)
+    devDependencies:
+      '@deepseek-ai/cordis':
+        specifier: workspace:^
+        version: link:../../../vendor/cordis
+      '@deepseek-ai/cordis-plugin-include':
+        specifier: workspace:^
+        version: link:../../../vendor/include
+      '@deepseek-ai/cordis-plugin-loader':
+        specifier: workspace:^
+        version: link:../../../vendor/loader
+      '@deepseek-ai/dsh-agent':
+        specifier: workspace:^
+        version: link:../../core/agent
+      '@deepseek-ai/dsh-agent-loop':
+        specifier: workspace:^
+        version: link:../../core/agent-loop
+      '@deepseek-ai/dsh-agent-loop-testkit':
+        specifier: workspace:^
+        version: link:../../test-support/agent-loop-testkit
+      '@deepseek-ai/dsh-invariants':
+        specifier: workspace:^
+        version: link:../../runtime-diagnostics/invariants
+      '@deepseek-ai/dsh-llm':
+        specifier: workspace:^
+        version: link:../../llm/llm
+      '@deepseek-ai/dsh-session':
+        specifier: workspace:^
+        version: link:../../core/session
+      '@deepseek-ai/dsh-system-prompt':
+        specifier: workspace:^
+        version: link:../../core/system-prompt
+      '@deepseek-ai/dsh-tools':
+        specifier: workspace:^
+        version: link:../../core/tools
+
   packages/experimental/tool-agent-team:
     dependencies:
       '@deepseek-ai/schemastery':
@@ -4248,8 +4291,8 @@ importers:
         specifier: link:../../../vendor/schemastery
         version: link:../../../vendor/schemastery
       '@nexus-framework/cli':
-        specifier: file:../../../../nexus-cli
-        version: file:../nexus-cli(@types/node@26.1.2)
+        specifier: ^1.4.0
+        version: 1.4.0(@types/node@26.1.2)
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:^
@@ -10728,8 +10771,8 @@ packages:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
 
-  '@nexus-framework/cli@file:../nexus-cli':
-    resolution: {directory: ../nexus-cli, type: directory}
+  '@nexus-framework/cli@1.4.0':
+    resolution: {integrity: sha512-FvyYds26WFN8+5NyqR60s1G+fwis47e519+WIkKjdyAZgCztIFg2kdzD04JQdlXT91QuczgWa25cob72j/8NaQ==}
     engines: {node: '>=20.0.0'}
     hasBin: true
 
@@ -13257,9 +13300,6 @@ packages:
     resolution: {integrity: sha512-ZUKRh6/kUFoAiTAtTYPZJ3hw9wNxx+BIBOijnlG9PnrJsCcSjs1wyyD6vJpaYtgnzDrKYRSqf3OO6Rfa93xsRg==}
     engines: {node: '>= 0.4'}
 
-  gpt-tokenizer@4.0.0:
-    resolution: {integrity: sha512-YAWIyzvuVUHEfW7tFfFAxH8qQb+Q3RU9nYOTy7skMNX5qzU6Q8jxTHZLyO56ug1vYvCR7wndzpd3jwD86/mhjQ==}
-
   graceful-fs@4.2.10:
     resolution: {integrity: sha512-9ByhssR2fPVsNZj478qUUbKfmL0+t5BDVyjShtyZZLiK7ZDAArFFfopyOTj0M05wE2tJPisA4iTnnXl2YoPvOA==}
 
@@ -13514,10 +13554,6 @@ packages:
 
   js-yaml@4.2.0:
     resolution: {integrity: sha512-ePWsvanv0DWuDRsW8dnt+R4jQ31SCRCQ7hhNcPXZPsoBZiemuZNYGf7adZdqX2D86j6rvKp3RpCxVTSb8WQlOw==}
-    hasBin: true
-
-  js-yaml@4.3.1:
-    resolution: {integrity: sha512-CY6crGq313MX8GkwvB7tzgp99vjQxY1++5y10/BKN/GUfHqWaOGQMNZkBvqSzsZKWk/ijwHlWzzkLulsGHhjWQ==}
     hasBin: true
 
   jscpd-darwin-arm64@5.0.12:
@@ -16765,7 +16801,7 @@ snapshots:
       '@tybys/wasm-util': 0.10.2
     optional: true
 
-  '@nexus-framework/cli@file:../nexus-cli(@types/node@26.1.2)':
+  '@nexus-framework/cli@1.4.0(@types/node@26.1.2)':
     dependencies:
       '@inquirer/prompts': 7.10.1(@types/node@26.1.2)
       '@modelcontextprotocol/sdk': 1.29.0(zod@4.4.3)
@@ -16777,10 +16813,8 @@ snapshots:
       execa: 9.6.1
       figlet: 1.11.4
       fs-extra: 11.4.0
-      gpt-tokenizer: 4.0.0
       gradient-string: 3.0.0
       inquirer: 12.11.1(@types/node@26.1.2)
-      js-yaml: 4.3.1
       mustache: 4.2.0
       ora: 8.2.0
       unzipper: 0.12.5
@@ -19191,8 +19225,6 @@ snapshots:
 
   gopd@1.2.0: {}
 
-  gpt-tokenizer@4.0.0: {}
-
   graceful-fs@4.2.10: {}
 
   graceful-fs@4.2.11: {}
@@ -19403,10 +19435,6 @@ snapshots:
   js-tokens@4.0.0: {}
 
   js-yaml@4.2.0:
-    dependencies:
-      argparse: 2.0.1
-
-  js-yaml@4.3.1:
     dependencies:
       argparse: 2.0.1
 

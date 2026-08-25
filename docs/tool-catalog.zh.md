@@ -43,7 +43,7 @@
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`、`job_list`、`job_output` | `ctx.tools`、`ctx.jobs`、`ctx.systemPrompt` | `tool/call`、`tool/result`、`user/message via agent.inject() for background completion notices` | - | 与任务种类无关的后台任务控制器：后台 bash 命令、PTY 发送和 subagent 都通过相同的 3 个工具读取、列出和终止。加载该插件会挂接控制器，从而启用生产方的 `ctx.jobs.start()`。 |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | `followup_task`、`interrupt_agent`、`list_agents`、`send_message`、`spawn_teammate`、`team_task_create`、`team_task_get`、`team_task_list`、`team_task_update`、`wait_agent` | `ctx.tools`、`ctx.systemPrompt`、`ctx.agentTeams`、`an exact live Team member Agent` | `tool/call`、`team/member`、`team/message/queued`、`team/message/delivered`、`team/task`、`tool/result` | - | 这 10 个工具限定于隐式 Team Lead 与持久 teammate 作用域。随产品发布的 dsh-base bundle 默认禁用该包；文档中的 Agent Teams profile patch 会启用它，并禁用旧 continuable child 的同名控制工具。 |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`、`owning Agent session` | `tool/call`、`todo/write`、`tool/result` | - | todo_write 是会话所有的状态；UI 将最新的 todo/write 事件渲染为检查清单。`allowParallelInProgress` 是没有默认值的必填项，因此本目录明确选择 `true`，对应描述允许同时存在多个 `in_progress` 项。选择 `false` 的部署会获得同一工具，但描述会要求只能有 1 个活动任务。 |
-| `@deepseek-ai/dsh-experimental-tool-nexus-brain` | `nexus_add_knowledge_entry`、`nexus_brief`、`nexus_doctor`、`nexus_get_active_plan`、`nexus_get_agent`、`nexus_get_context`、`nexus_get_handoff`、`nexus_get_plan`、`nexus_get_skill`、`nexus_get_vital_signs`、`nexus_list_agents`、`nexus_list_plans`、`nexus_list_skills`、`nexus_plan_note`、`nexus_plan_tick`、`nexus_query_knowledge`、`nexus_wake` | `ctx.tools`、`a NEXUS project (.nexus/) at Config.projectRoot` | - | - | 每个 nexus_* 工具都直接通过 @nexus-framework/cli 的处理函数读写目标 NEXUS 项目的 .nexus/ 目录，而不经过这个 harness 的会话日志 —— 本目录是针对构建期固定的 fixture NEXUS 项目启动的，而非某个真实存在的项目。 |
+| `@deepseek-ai/dsh-experimental-tool-nexus-brain` | `nexus_add_knowledge_entry`、`nexus_brief`、`nexus_doctor`、`nexus_get_active_plan`、`nexus_get_agent`、`nexus_get_handoff`、`nexus_get_plan`、`nexus_get_skill`、`nexus_get_vital_signs`、`nexus_list_agents`、`nexus_list_plans`、`nexus_list_skills`、`nexus_plan_note`、`nexus_plan_tick`、`nexus_query_knowledge`、`nexus_wake` | `ctx.tools`、`a NEXUS project (.nexus/) at Config.projectRoot` | - | - | 每个 nexus_* 工具都直接通过 @nexus-framework/cli 的处理函数读写目标 NEXUS 项目的 .nexus/ 目录，而不经过这个 harness 的会话日志 —— 本目录是针对构建期固定的 fixture NEXUS 项目启动的，而非某个真实存在的项目。 |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`、`ctx.workflowEngine`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents the script children)` | `tool/call`、`tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`、`web_search` | `ctx.tools`、`ctx.web`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | web_search 和 web_fetch 将提供方选择置于 ctx.web 之后，使模型可见 schema 在更换后端时保持稳定。 |
 
@@ -2203,35 +2203,6 @@ NEXUS 漂移报告（D01-D14 检查项）—— 过期文档、缺失的 gate �
   },
   "required": [
     "name"
-  ]
-}
-```
-
-来源：[`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
-
-### `nexus_get_context`
-
-为一项任务组合出**一份**限定范围的 NEXUS 上下文包：当前计划片段、对齐 gate、vitals、匹配的技能、匹配的知识条目，以及配方文档 —— 由 maxChars 限定大小。优先使用它，而不是分别调用 nexus_get_active_plan / nexus_query_knowledge / nexus_list_skills。
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "task": {
-      "type": "string",
-      "description": "Task description — used to match knowledge entries and skill triggers."
-    },
-    "agent": {
-      "type": "string",
-      "description": "Agent whose context recipe scopes the composition."
-    },
-    "maxChars": {
-      "type": "integer",
-      "description": "Soft cap on composed payload size (2000-60000, default 12000)."
-    }
-  },
-  "required": [
-    "task"
   ]
 }
 ```

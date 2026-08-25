@@ -71,22 +71,23 @@ async function boot(projectRoot: string): Promise<Context> {
 }
 
 describe('tool-nexus-brain real Loader composition through cordis.yml', () => {
-  it('boots from cordis.yml and serves nexus_get_context against the real fixture project', async () => {
+  it('boots from cordis.yml and serves nexus_wake against the real fixture project', async () => {
     const ctx = await boot(FIXTURE_ROOT)
 
     const names = ctx.tools.schemas().map(schema => schema.name)
-    expect(names).toContain('nexus_get_context')
     expect(names).toContain('nexus_wake')
+    expect(names).toContain('nexus_get_active_plan')
 
     const result = await ctx.tools.execute({
       signal: new AbortController().signal,
-      callId: CallId('loader-context-1'),
-      name: 'nexus_get_context',
-      arguments: { task: 'exercise the loader composition test' },
+      callId: CallId('loader-wake-1'),
+      name: 'nexus_wake',
+      arguments: {},
     })
     expect(result.isError).toBe(false)
-    const payload = JSON.parse(resultText(result)) as { plan: { id: string } | null }
-    expect(payload.plan?.id).toBe('fixture-plan')
+    const payload = JSON.parse(resultText(result)) as { token: string; activePlan: string | null }
+    expect(payload.token).toMatch(/^NX-WAKE-/)
+    expect(payload.activePlan).toBe('fixture-plan')
   }, 30_000)
 
   it('fails loading when projectRoot has no .nexus/ directory', async () => {

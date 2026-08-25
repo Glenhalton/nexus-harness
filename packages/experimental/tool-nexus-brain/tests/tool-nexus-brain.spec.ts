@@ -32,7 +32,7 @@ async function mount(projectRoot: string): Promise<Context> {
 }
 
 describe('tool-nexus-brain', () => {
-  it('registers all 17 nexus_* tools', async () => {
+  it('registers all 16 nexus_* tools', async () => {
     const ctx = await mount(FIXTURE_ROOT)
     const names = ctx.tools.schemas().map(schema => schema.name).filter(name => name.startsWith('nexus_')).sort()
     expect(names).toEqual([
@@ -41,7 +41,6 @@ describe('tool-nexus-brain', () => {
       'nexus_doctor',
       'nexus_get_active_plan',
       'nexus_get_agent',
-      'nexus_get_context',
       'nexus_get_handoff',
       'nexus_get_plan',
       'nexus_get_skill',

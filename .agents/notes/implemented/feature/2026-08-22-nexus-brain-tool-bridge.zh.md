@@ -26,4 +26,16 @@ NEXUS（`@nexus-framework/cli`）是一个独立的项目智能 CLI，它通过�
 
 ## 后果
 
-任何在这个 harness 中组合出来的 agent 会话都可以挂载 `@deepseek-ai/dsh-experimental-tool-nexus-brain`，获得与通过 stdio 接入的 NEXUS 感知编码 agent 相同的 NEXUS 项目智能，并且每次调用都会被这个 harness 的会话日志自动捕获。代价是：`@nexus-framework/cli` 的数值范围 zod 校验（`nexus_query_knowledge` 的 `limit`、`nexus_get_context` 的 `maxChars`）在 Cordis 工具 schema 中不可见 —— 底层处理函数内部已经对越界值做了截断，所以这只是 schema 可见性上的缺口，不是正确性上的缺口。在 nexus-cli 发布携带 `./mcp` 导出的版本、把这个依赖变成普通的 semver 范围之前，这个包无法从 `packages/experimental/` 中被提升出去。
+任何在这个 harness 中组合出来的 agent 会话都可以挂载 `@deepseek-ai/dsh-experimental-tool-nexus-brain`，获得与通过 stdio 接入的 NEXUS 感知编码 agent 相同的 NEXUS 项目智能，并且每次调用都会被这个 harness 的会话日志自动捕获。代价是：`@nexus-framework/cli` 的数值范围 zod 校验（`nexus_query_knowledge` 的 `limit`）在 Cordis 工具 schema 中不可见 —— 底层处理函数内部已经对越界值做了截断，所以这只是 schema 可见性上的缺口，不是正确性上的缺口。在 nexus-cli 发布携带 `./mcp` 导出的版本、把这个依赖变成普通的 semver 范围之前，这个包无法从 `packages/experimental/` 中被提升出去。
+
+## 更新，2026-08-24
+
+`file:` 依赖已经被替换为 `"@nexus-framework/cli": "^1.4.0"` —— `./mcp` 子路径导出已经确认在已发布的 npm `1.4.0` 上线（不只是提交到代码库，而是直接查过了注册表），所以上面“尚未发布”的前提已经不再成立。`scripts/publint-all.ts` 中相应的 `LOCAL_DEPENDENCY_ALLOWLIST` 条目也已相应移除（白名单机制本身保留，留空，供下一个需要它的包使用）。这个包目前仍然放在 `packages/experimental/` 下 —— 去掉一个本地文件依赖本身并不能回答它是否应该属于某个正式的 `packages/*/` 分组；那是一个独立的、尚未做出的决定，不是这次更新要解决的阻塞项。
+
+## 更新，2026-08-24（二）：`nexus_get_context` 迁移到环境式注入
+
+`nexus_get_context` —— 17 个工具里唯一一个组合出限定范围内容包（计划片段、知识、技能、生命体征）而不是读写某一件具体窄事的工具 —— 已经从这个包的 17 个工具中移除，剩下 16 个。它迁移到了一个新的同级包 `@deepseek-ai/dsh-experimental-nexus-brain-context`，该包预置一个 `agent/pre-step` 监听器，在每一轮对话的第 1 步把同样组合出的内容包作为一条持久化消息注入进去，不需要任何工具调用。两个包依赖的是同一个已发布的 `@nexus-framework/cli` 版本范围（见上一条更新）—— 这次拆分不会重新引入 `file:` 依赖。
+
+动机来自 `nexus-harness-work.md` 早已担心的小预算、工具调用不可靠的 harness 配置：一个无法或不会可靠发起工具调用的目标，此前完全没有办法触达大脑的上下文。环境式注入去掉了这个依赖 —— 无论模型是否发起调用，都能获得基础信息 —— 代价是失去了模型主动发起的 `nexus_get_context(task)` 调用所允许的、刻意措辞的 `task` 字符串；环境式路径通过启发式的方式派生 `task`，即拼接当轮的用户消息文本（详见那个包的 README）。
+
+这两个包依然彼此独立、可自由组合：一个会话既可以只挂载 `tool-nexus-brain`（显式调用，没有环境式开销），也可以只挂载 `nexus-brain-context`（仅环境式，没有往返调用），或者两者都挂载（环境式基础信息，加上一次用于手工措辞任务的显式调用）。这是一次刻意的移除，而不是"弃用但保留"：既然环境式路径已经覆盖了同样的只读组合逻辑，让两者都能被工具调用只会是用两种方式请求同一件事；而 NEXUS 自身对 `nexus_get_context` 的描述早就告诉模型应该优先用它，而不是分别调用 `nexus_get_active_plan`/`nexus_query_knowledge`/`nexus_list_skills` —— 这条建议在环境式路径下更容易被自然遵循，而不必靠第二个调用入口去强制执行。记录在 `ambient-context-injection` 这份 NEXUS plan 中。

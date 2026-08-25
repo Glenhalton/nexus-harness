@@ -39,7 +39,7 @@ This table connects model-visible tool names to the plugin package and service s
 | `@deepseek-ai/dsh-tool-jobs` | `job_kill`, `job_list`, `job_output` | `ctx.tools`, `ctx.jobs`, `ctx.systemPrompt` | `tool/call`, `tool/result`, `user/message via agent.inject() for background completion notices` | - | The kind-agnostic background-job controller: background bash commands, PTY sends, and subagents are read, listed, and killed through the same three tools. Loading the plugin attaches the controller that arms producers' `ctx.jobs.start()`. |
 | `@deepseek-ai/dsh-experimental-tool-agent-team` | `followup_task`, `interrupt_agent`, `list_agents`, `send_message`, `spawn_teammate`, `team_task_create`, `team_task_get`, `team_task_list`, `team_task_update`, `wait_agent` | `ctx.tools`, `ctx.systemPrompt`, `ctx.agentTeams`, `an exact live Team member Agent` | `tool/call`, `team/member`, `team/message/queued`, `team/message/delivered`, `team/task`, `tool/result` | - | All ten tools are scoped to implicit Team Leads and durable teammates. The shipped dsh-base bundle keeps the package disabled; the documented Agent Teams profile patch enables it while disabling the legacy continuable-child control names. |
 | `@deepseek-ai/dsh-tool-todo` | `todo_write` | `ctx.tools`, `owning Agent session` | `tool/call`, `todo/write`, `tool/result` | - | todo_write is session-owned state; UIs render the latest todo/write event as a checklist. `allowParallelInProgress` is required with no default, so the catalog states its choice: `true`, whose description invites several `in_progress` items. A deployment choosing `false` receives the same tool with a description asking for exactly one active task. |
-| `@deepseek-ai/dsh-experimental-tool-nexus-brain` | `nexus_add_knowledge_entry`, `nexus_brief`, `nexus_doctor`, `nexus_get_active_plan`, `nexus_get_agent`, `nexus_get_context`, `nexus_get_handoff`, `nexus_get_plan`, `nexus_get_skill`, `nexus_get_vital_signs`, `nexus_list_agents`, `nexus_list_plans`, `nexus_list_skills`, `nexus_plan_note`, `nexus_plan_tick`, `nexus_query_knowledge`, `nexus_wake` | `ctx.tools`, `a NEXUS project (.nexus/) at Config.projectRoot` | - | - | Every nexus_* tool reads or writes the target NEXUS project's .nexus/ directory directly through @nexus-framework/cli's handlers, not through this harness's session log — the catalog boots against a fixture NEXUS project fixed at build time, not a live one. |
+| `@deepseek-ai/dsh-experimental-tool-nexus-brain` | `nexus_add_knowledge_entry`, `nexus_brief`, `nexus_doctor`, `nexus_get_active_plan`, `nexus_get_agent`, `nexus_get_handoff`, `nexus_get_plan`, `nexus_get_skill`, `nexus_get_vital_signs`, `nexus_list_agents`, `nexus_list_plans`, `nexus_list_skills`, `nexus_plan_note`, `nexus_plan_tick`, `nexus_query_knowledge`, `nexus_wake` | `ctx.tools`, `a NEXUS project (.nexus/) at Config.projectRoot` | - | - | Every nexus_* tool reads or writes the target NEXUS project's .nexus/ directory directly through @nexus-framework/cli's handlers, not through this harness's session log — the catalog boots against a fixture NEXUS project fixed at build time, not a live one. |
 | `@deepseek-ai/dsh-tool-workflow` | `workflow` | `ctx.tools`, `ctx.workflowEngine`, `ctx.systemPrompt`, `a calling Agent (exec.agent parents the script children)` | `tool/call`, `tool/result` | - | - |
 | `@deepseek-ai/dsh-tool-web` | `web_fetch`, `web_search` | `ctx.tools`, `ctx.web`, `ctx.systemPrompt` | `tool/call`, `tool/result` | - | web_search and web_fetch keep provider selection behind ctx.web so model-visible schemas stay stable across backend swaps. |
 
@@ -2196,35 +2196,6 @@ Read one NEXUS agent role definition by name.
   },
   "required": [
     "name"
-  ]
-}
-```
-
-Source: [`packages/experimental/tool-nexus-brain/src/index.ts`](../packages/experimental/tool-nexus-brain/src/index.ts)
-
-### `nexus_get_context`
-
-Compose ONE scoped NEXUS context pack for a task: active plan slice, alignment gate, vitals, matching skills, matching knowledge entries, and recipe docs — bounded by maxChars. Prefer this over separate nexus_get_active_plan / nexus_query_knowledge / nexus_list_skills calls.
-
-```json
-{
-  "type": "object",
-  "properties": {
-    "task": {
-      "type": "string",
-      "description": "Task description — used to match knowledge entries and skill triggers."
-    },
-    "agent": {
-      "type": "string",
-      "description": "Agent whose context recipe scopes the composition."
-    },
-    "maxChars": {
-      "type": "integer",
-      "description": "Soft cap on composed payload size (2000-60000, default 12000)."
-    }
-  },
-  "required": [
-    "task"
   ]
 }
 ```

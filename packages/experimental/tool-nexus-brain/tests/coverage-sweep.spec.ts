@@ -1,4 +1,4 @@
-// Exercises every one of the 17 nexus_* tools' execute()/render() and
+// Exercises every one of the 16 nexus_* tools' execute()/render() and
 // presentCall() closures at least once. Each tool follows the identical
 // defineTool wiring pattern (see src/index.ts); the behavior of any one tool
 // is already covered by tool-nexus-brain.spec.ts and loader-composition.spec.ts —
@@ -41,7 +41,6 @@ const ARGS: Record<string, Record<string, unknown>> = {
   nexus_list_agents: {},
   nexus_get_agent: { name: 'example-agent' },
   nexus_get_handoff: {},
-  nexus_get_context: { task: 'coverage sweep' },
   nexus_plan_tick: { id: 'fixture-plan', step: 2, checked: true },
   nexus_plan_note: { id: 'fixture-plan', message: 'coverage sweep note' },
   nexus_add_knowledge_entry: { category: 'pattern', title: 'Coverage sweep entry', body: 'Exercised by the coverage sweep test.' },
