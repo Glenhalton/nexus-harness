@@ -11,7 +11,7 @@
 
 import { access, lstat, readdir, readFile, stat } from 'node:fs/promises'
 import { unwatchFile, watchFile, type Stats } from 'node:fs'
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { homedir } from 'node:os'
 import type { Context } from '@deepseek-ai/cordis'
 import chokidar from 'chokidar'
@@ -95,6 +95,14 @@ interface SkillRoot {
   skipSystem?: boolean
   projectRoot?: string
   trustedHost?: boolean
+  /**
+   * The current project's directory basename, present only on roots that are
+   * NOT already project-scoped by location (`user-dsh`/`user-agents`). A
+   * skill declaring frontmatter `projects` is included from such a root only
+   * when this basename appears in that list; a skill with no `projects`
+   * field is unaffected, unfiltered exactly as before this field existed.
+   */
+  filterToProjectBasename?: string
 }
 
 interface SkillRootEntry {
@@ -109,6 +117,14 @@ interface ParsedSkill {
   whenToUse?: string
   invocation: SkillInvocationPolicy
   metadata?: Record<string, unknown>
+  /**
+   * Project basenames this skill is scoped to, from frontmatter `projects`.
+   * `undefined` means unscoped: included from every root exactly as before
+   * this field existed. Only consulted for roots carrying
+   * `filterToProjectBasename` (the two user-level roots); project-scoped and
+   * custom roots ignore it, they are already scoped by directory placement.
+   */
+  projects?: string[]
   content: string
 }
 
@@ -240,8 +256,9 @@ export class FileSystemSkillProvider implements SkillProvider {
 
   private async roots(cwd: string | undefined): Promise<SkillRoot[]> {
     const roots: SkillRoot[] = []
+    let projectRoot: string | undefined
     if (this.includeDefaultRoots && cwd !== undefined) {
-      const projectRoot = await findProjectRoot(resolve(cwd), optionalFileSystem(this.ctx))
+      projectRoot = await findProjectRoot(resolve(cwd), optionalFileSystem(this.ctx))
       roots.push(
         { path: join(projectRoot, '.dsh/skills'), source: 'project-dsh', rank: PROJECT_DSH_RANK, projectRoot },
         { path: join(projectRoot, '.agents/skills'), source: 'project-agents', rank: PROJECT_AGENTS_RANK, projectRoot },
@@ -249,9 +266,13 @@ export class FileSystemSkillProvider implements SkillProvider {
     }
     roots.push(...this.customSkillDirs.map(path => ({ path, source: 'custom' as const, rank: CUSTOM_RANK })))
     if (this.includeDefaultRoots) {
+      // Unset when no cwd resolved a project (e.g. a cold transcript read):
+      // project-scoping frontmatter is then unenforceable, so every skill
+      // shows, the same fallback a plain `projects` field omission gets.
+      const filterToProjectBasename = projectRoot === undefined ? {} : { filterToProjectBasename: basename(projectRoot) }
       roots.push(
-        { path: join(this.dshHome, 'skills'), source: 'user-dsh', rank: USER_DSH_RANK, skipSystem: true },
-        { path: join(this.agentsHome, 'skills'), source: 'user-agents', rank: USER_AGENTS_RANK },
+        { path: join(this.dshHome, 'skills'), source: 'user-dsh', rank: USER_DSH_RANK, skipSystem: true, ...filterToProjectBasename },
+        { path: join(this.agentsHome, 'skills'), source: 'user-agents', rank: USER_AGENTS_RANK, ...filterToProjectBasename },
       )
     }
     if (this.bundledSkillDir !== undefined) {
@@ -729,6 +750,9 @@ async function discoverRoot(root: SkillRoot, ctx: Context, provider: string): Pr
     if (locator === undefined) continue
     const parsed = await parseSkillFile(locator.path, ctx, undefined, root.trustedHost === true)
     if (parsed === undefined) continue
+    if (root.filterToProjectBasename !== undefined
+      && parsed.projects !== undefined
+      && !parsed.projects.includes(root.filterToProjectBasename)) continue
     skills.push({
       name: parsed.name,
       description: parsed.description,
@@ -830,6 +854,7 @@ async function parseSkillFile(path: string, ctx: Context, signal?: AbortSignal, 
     ...optionalString(parsed.data, 'whenToUse'),
     invocation,
     ...optionalMetadata(parsed.data),
+    ...optionalProjects(parsed.data, path, ctx),
     content: parsed.body.trim(),
   }
 }
@@ -1033,6 +1058,24 @@ function optionalMetadata(data: Record<string, unknown>): { metadata?: Record<st
   if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
     return { metadata: value as Record<string, unknown> }
   }
+  return {}
+}
+
+/**
+ * Parse the optional `projects` frontmatter field: the project directory
+ * basenames a user-level skill is scoped to. Absent means unscoped
+ * (included everywhere, the pre-existing behavior); a wrong-shaped value
+ * warns and is treated as absent rather than dropping the whole skill,
+ * matching `whenToUse`/`metadata`, since scoping is advisory filtering, not
+ * an invocation-surface decision the way `disable-model-invocation` is.
+ */
+function optionalProjects(data: Record<string, unknown>, path: string, ctx: Context): { projects?: string[] } {
+  if (!Object.hasOwn(data, 'projects')) return {}
+  const value = data.projects
+  if (Array.isArray(value) && value.length > 0 && value.every(entry => typeof entry === 'string' && entry.length > 0)) {
+    return { projects: value as string[] }
+  }
+  ctx.logger.warn(`skill file ${path} frontmatter "projects" ignored: must be a non-empty array of non-empty strings`)
   return {}
 }
 

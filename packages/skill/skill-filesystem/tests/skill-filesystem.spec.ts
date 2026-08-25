@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { mkdir, readdir, readFile, rename, rm, stat, symlink, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { Context } from '@deepseek-ai/cordis'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
@@ -231,6 +231,89 @@ describe('FileSystemSkillProvider', () => {
 
     expect((await ctx.skills.get('project-name', { cwd: project }))?.description).toBe('Project wins')
     expect((await ctx.skills.get('runtime-name', { cwd: project }))?.description).toBe('Runtime wins')
+  })
+
+  it('scopes user-level skills to the projects named in their "projects" frontmatter', async () => {
+    const home = await tempDir('skill-projects-home')
+    const matching = await tempDir('skill-projects-match-worker')
+    const other = await tempDir('skill-projects-match-other')
+    await mkdir(join(matching, '.git'), { recursive: true })
+    await mkdir(join(other, '.git'), { recursive: true })
+
+    const root = join(home, '.dsh/skills')
+    await mkdir(root, { recursive: true })
+    await writeFile(join(root, 'scoped-skill.md'), [
+      '---',
+      'name: scoped-skill',
+      'description: only relevant to one project',
+      'projects:',
+      `  - ${basename(matching)}`,
+      '---',
+      '',
+      'Scoped body.',
+    ].join('\n'))
+    await writeSkill(root, 'unscoped-skill', 'relevant everywhere')
+
+    const ctx = await setupLocal(home)
+
+    const inMatchingProject = (await ctx.skills.list({ cwd: matching })).map(skill => skill.name)
+    expect(inMatchingProject).toContain('scoped-skill')
+    expect(inMatchingProject).toContain('unscoped-skill')
+
+    const inOtherProject = (await ctx.skills.list({ cwd: other })).map(skill => skill.name)
+    expect(inOtherProject).not.toContain('scoped-skill')
+    expect(inOtherProject).toContain('unscoped-skill')
+
+    // No cwd resolves no project, so scoping is unenforceable: fails open.
+    const withNoCwd = (await ctx.skills.list()).map(skill => skill.name)
+    expect(withNoCwd).toContain('scoped-skill')
+  })
+
+  it('does not apply "projects" scoping to project-rooted or malformed frontmatter', async () => {
+    const home = await tempDir('skill-projects-malformed-home')
+    const project = await tempDir('skill-projects-malformed-project')
+    await mkdir(join(project, '.git'), { recursive: true })
+
+    // A skill living in the PROJECT'S OWN root is already scoped by location;
+    // a "projects" field naming some other project must not hide it here.
+    await mkdir(join(project, '.dsh/skills'), { recursive: true })
+    await writeFile(join(project, '.dsh/skills/project-scoped.md'), [
+      '---',
+      'name: project-scoped',
+      'description: lives in the project root',
+      'projects:',
+      '  - some-unrelated-project',
+      '---',
+      '',
+      'Body.',
+    ].join('\n'))
+
+    const root = join(home, '.dsh/skills')
+    await mkdir(root, { recursive: true })
+    await writeFile(join(root, 'bad-shape.md'), [
+      '---',
+      'name: bad-shape',
+      'description: projects is not an array',
+      'projects: not-an-array',
+      '---',
+      '',
+      'Body.',
+    ].join('\n'))
+    await writeFile(join(root, 'empty-array.md'), [
+      '---',
+      'name: empty-array',
+      'description: projects is an empty array',
+      'projects: []',
+      '---',
+      '',
+      'Body.',
+    ].join('\n'))
+
+    const ctx = await setupLocal(home)
+    const names = (await ctx.skills.list({ cwd: project })).map(skill => skill.name)
+    expect(names).toContain('project-scoped')
+    expect(names).toContain('bad-shape')
+    expect(names).toContain('empty-array')
   })
 
   it('parses flat skills and filters invalid skills from the invocation-neutral listing', async () => {

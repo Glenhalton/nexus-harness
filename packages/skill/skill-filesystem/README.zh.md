@@ -40,6 +40,8 @@
 
 项目根目录是包含 `.git` 的最近祖先目录；如果不存在，则使用当前 cwd。用户 DSH 根目录会跳过其 `.system` 子目录，因此归系统所有的目录不会被当作普通用户 skill。`includeDefaultRoots: false` 会省略项目根、用户根以及 `$DSH_BUNDLED_SKILL_DIR` 环境默认值，同时保留显式配置的自定义根与 bundled 根，因此可以挂载多个只看到自身根的唯一命名隔离提供方。该提供方提供项目和用户 skill；其他提供方可提供内置系统 skill。
 
+两个用户根（`user-dsh`、`user-agents`）在这台机器上对每个项目都是同一份：默认情况下，在那里发现的任何 skill 都会在每一个会话中提供，无论该项目实际是什么。若 skill 的 frontmatter 声明了 `projects`，则会收窄这一行为：只有当前项目目录的 basename 出现在该列表中时，才会从用户根包含这个 skill，否则会被跳过，如同从未被发现过。没有 `projects` 字段的 skill 不受影响，其行为与该字段存在之前完全一致，在任何项目中都会出现；这正是为什么一个漂流到用户根却没有 `projects` 字段的 skill（比如安装在 `~/.agents/skills` 下的 Cloudflare 专属 skill）会在每一个与之无关的项目里,把完整的目录描述都展示出来。`projects` 只对这两个用户根生效；从项目根、自定义根或 bundled 根发现的 skill 会忽略它，因为这些根本身已经通过放置位置或显式配置完成了范围限定。没有 `cwd`（例如对历史会话的冷读取）时，无法解析出项目，范围限定也就无法执行，此时每个 skill 都会被包含，这与省略 `projects` 字段时得到的回退行为一致。
+
 当 `ctx.fs` 可用时，发现通过 `ctx.fs.listDir` 列出根，通过 `ctx.fs.readText` 读取 skill 文件，并通过文件系统服务探测 `.git`。完整 skill 加载会将查找中止信号转发给文件系统元数据和内容读取。如果没有文件系统服务，提供方回退到可中止的 Node 文件系统 I/O，使最小本地上下文仍能加载 skill。已确认缺失的路径属于有效空状态；遇到格式错误或非文本条目时，提供方会发出警告并跳过；意外的发现或读取失败会使注册表快照不完整，系统不会因此用看似发生删除的结果替换上一份可用模型目录。
 
 ## 目录变更检测
@@ -52,7 +54,9 @@
 
 ## skill 格式
 
-skill 可以是单层目录 bundle（`<name>/SKILL.md`），也可以是平铺 Markdown 文件（`<name>.md`）。刻意不支持发现嵌套的 `**/SKILL.md`。Frontmatter 使用 `yaml` 包解析为开放的 YAML 对象；该提供方解析必填的 `name` 和 `description`，以及可选的 `whenToUse`、`metadata`、`disable-model-invocation` 和 `user-invocable`。名称必须使用 kebab-case。
+skill 可以是单层目录 bundle（`<name>/SKILL.md`），也可以是平铺 Markdown 文件（`<name>.md`）。刻意不支持发现嵌套的 `**/SKILL.md`。Frontmatter 使用 `yaml` 包解析为开放的 YAML 对象；该提供方解析必填的 `name` 和 `description`，以及可选的 `whenToUse`、`metadata`、`disable-model-invocation`、`user-invocable` 和 `projects`。名称必须使用 kebab-case。
+
+`projects` 是一个非空字符串数组，每一项是某个项目目录的 basename（例如 `nexus-harness`，而不是绝对路径——这个值需要能够迁移到其他机器的用户主目录，因此它标识的是项目本身而不是其位置）。它只在上文"发现"一节所述的两个用户根上生效。形状错误的值（不是数组、空数组、含非字符串项）会记录警告并被当作未设置处理，即不限定范围，而不会丢弃整个 skill：这个字段是建议性的过滤，不像 `disable-model-invocation` 那样是调用面的决定，因此在此处失败时选择放行不会有把 skill 暴露在本应隐藏之处的风险，最坏情况也只是出现在无关的地方，与该字段存在之前的行为一致。
 
 这两个调用字段接受 YAML 布尔值，以及不区分大小写的 `true`/`false`、`yes`/`no`、`on`/`off` 和 `1`/`0`。`disable-model-invocation: true` 会从面向模型的目录和 loader 中排除该 skill；`user-invocable: false` 会从面向用户的命令中排除该 skill。每个省略的字段都默认为允许对应接口调用；提供方始终输出两个正向内部策略值，即使两个键都不存在也不例外。若使用驼峰拼写或提供非布尔调用值，系统会记录警告并从发现结果中排除整个 skill，而不是只丢弃该字段或回退到宽松的默认值。调用策略校验遵循失败时默认拒绝原则，因为忽略无效数据可能会在已禁用的接口上暴露 skill；类型错误的可选 `whenToUse` 和 `metadata` 值则会被省略，因为这两个字段目前都不授予调用权限。
 
@@ -73,3 +77,4 @@ watcher 触发的失效可促使上述消费方在现有请求历史中追加替
 - **格式错误的条目会随警告消失**：模型目录不会收到每个 skill 的诊断，无法区分缺失的 skill 与无效的 skill；意外 I/O 失败则会保留最后一份可用目录。
 - **缺失根观察每次轮询一个路径段**：启动时不存在的根会使用 `fs.watchFile` 按 `watchPollIntervalMs` 轮询，直至 Chokidar 可以附加；这以有界检测延迟换取跨 IDE、Git 和 shell 工作流的可靠创建检测。
 - **无正文修订协议**：已加载的正文是普通的已保留工具历史；后续文件编辑会影响后续调用，但既不会改写旧结果，也不会通知正文已发生变化。
+- **`projects` 是逐个 skill 的主动声明，不是项目相关性判断**：系统不会推断某个 skill 是否真的适合某个项目的技术栈；一个未声明范围的用户根 skill 在其自身 frontmatter 明确指定之前,仍会在所有地方出现。它目前也只覆盖两个用户根；通过 `customSkillDirs` 配置的自定义根目前刻意不做过滤，因为那个根本身已经是一次显式、主动的选择,而非默认始终开启。
