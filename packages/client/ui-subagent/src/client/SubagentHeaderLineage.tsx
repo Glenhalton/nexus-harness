@@ -43,6 +43,7 @@ interface CatalogRowsProps {
   refresh: (parentSessionId: SessionId) => void
   toggleBranch: (childSessionId: SessionId) => void
   closeCatalog: () => void
+  openSubagentDetails?: (childSessionId: SessionId) => void
 }
 
 function diagnosticReason(
@@ -236,7 +237,7 @@ function CatalogLoadingRows({
 /** Render one catalog level and recurse only through explicitly expanded rows. */
 function CatalogRows({
   parentSessionId, currentSessionId, catalog, catalogs, summaries, expanded, level, now,
-  openChild, refresh, toggleBranch, closeCatalog, t,
+  openChild, refresh, toggleBranch, closeCatalog, openSubagentDetails, t,
 }: CatalogRowsProps & { t: TranslateNS<typeof NS> }) {
   const emptyLoading = catalog.state === 'loading' && catalog.entries.length === 0
   const reserveDisclosure = catalog.entries.some(
@@ -390,6 +391,21 @@ function CatalogRows({
                     )}
                   </span>
                 )}
+                {openSubagentDetails !== undefined && (
+                  <button
+                    type="button"
+                    className={css.detailsButton}
+                    aria-label="Open Details"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      openSubagentDetails(entry.id)
+                      closeCatalog()
+                    }}
+                  >
+                    Open Details
+                  </button>
+                )}
               </div>
             </div>
             {isExpanded && !knownLeaf && (
@@ -421,6 +437,7 @@ function CatalogRows({
                       refresh={refresh}
                       toggleBranch={toggleBranch}
                       closeCatalog={closeCatalog}
+                      openSubagentDetails={openSubagentDetails}
                       t={t}
                     />
                   )}
@@ -440,6 +457,7 @@ interface CatalogDropdownSharedProps extends SubagentCatalogInjected {
   separator?: boolean
   useSessions: SubagentHeaderLineageProps['useSessions']
   t: TranslateNS<typeof NS>
+  openSubagentDetails?: (childSessionId: SessionId) => void
 }
 
 type CatalogDropdownProps = CatalogDropdownSharedProps & (
@@ -480,7 +498,7 @@ function catalogMenuPosition(trigger: HTMLButtonElement): CSSProperties {
 /** One trigger-plus-tree dropdown over the catalog rooted at `rootSessionId`. */
 function CatalogDropdown({
   rootSessionId, currentSessionId, displayTitle, openTitle, variant, separator = false,
-  useSessions, openChild, refresh, setCatalogOpen, t,
+  useSessions, openChild, refresh, setCatalogOpen, openSubagentDetails, t,
 }: CatalogDropdownProps) {
   const ancestorSwitcher = variant === 'switcher' && openTitle !== undefined
   const catalogs = useSessions(state => state.subagentsByParent)
@@ -796,6 +814,7 @@ function CatalogDropdown({
             refresh={refresh}
             toggleBranch={toggleBranch}
             closeCatalog={() => { changeOpen(false) }}
+            openSubagentDetails={openSubagentDetails}
             t={t}
           />
         </div>
@@ -810,14 +829,14 @@ function CatalogDropdown({
  * @returns An ordinary-title descendant count, or a title-and-chevron sibling switcher.
  */
 export function SubagentHeaderLineage({
-  lineageSessionId, displayTitle, openTitle,
+  lineageSessionId, displayTitle, openTitle, openSubagentDetails,
   useSessions, openChild, refresh, setCatalogOpen, t,
 }: SubagentHeaderLineageProps) {
   const parentId = useSessions((state) => {
     const summary = state.byId[lineageSessionId]
     return summary?.origin === 'subagent' ? summary.parentId : undefined
   })
-  const shared = { useSessions, openChild, refresh, setCatalogOpen, t }
+  const shared = { useSessions, openChild, refresh, setCatalogOpen, openSubagentDetails, t }
   if (parentId === undefined) {
     return (
       <CatalogDropdown

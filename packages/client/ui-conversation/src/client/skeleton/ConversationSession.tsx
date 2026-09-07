@@ -65,7 +65,7 @@ function equalBreadcrumbs(left: readonly Breadcrumb[], right: readonly Breadcrum
  */
 export function ConversationSessionHeader({
   sessionId, useSession, useSessions, useStore, actions,
-  renderSlot, views, open, t,
+  renderSlot, views, open, openDetails, t,
 }: ConversationSessionHeaderProps) {
   useSyncExternalStore(views.subscribe, views.version)
   const tabs = views.list()
@@ -107,6 +107,10 @@ export function ConversationSessionHeader({
                     lineageSessionId: summary.id,
                     displayTitle: summary.displayTitle,
                     ...last ? {} : { openTitle: () => { open(summary.id) } },
+                    openSubagentDetails: (id: string) => {
+                      actions.select({ kind: 'subagent', sessionId: id })
+                      openDetails()
+                    }
                   }
                   return (
                     <span key={summary.id} className={css.crumbSeg}>

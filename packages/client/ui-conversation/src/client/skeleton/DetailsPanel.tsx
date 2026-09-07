@@ -68,18 +68,26 @@ export function DetailsPanel({ useSession, useSessions, sessionId, useStore, ren
   // Session workspace root: an omitted or relative terminal cwd resolves
   // against it, which the pure presenter cannot see.
   const sessionCwd = useSessions(list => list.byId[sessionId]?.cwd)
-  const callId = selection?.callId
+  const callId = selection?.kind === 'tool' ? selection.callId : undefined
   // materialFor builds a fresh wrapper; shallowEqual short-circuits on its
   // stable members (result node reference rides the snapshot's structural sharing).
   const material = useSession(
     s => (callId === undefined ? null : materialFor(s, callId)),
     (a, b) => shallowEqual(a, b))
 
+  if (selection?.kind === 'subagent') {
+    return (
+      <div className={css.root}>
+        {renderSlot('conversation.details.subagent', { sessionId: selection.sessionId })}
+      </div>
+    )
+  }
+
   return (
     <div className={css.root}>
       <div className={css.header}>
         <div className={css.title}>
-          {selection === null ? t('details.title') : material?.name ?? selection.toolName ?? t('details.title')}
+          {selection === null ? t('details.title') : material?.name ?? (selection.kind === 'tool' ? selection.toolName : null) ?? t('details.title')}
         </div>
         <button
           type="button" className={css.close} aria-label={t('details.close')}

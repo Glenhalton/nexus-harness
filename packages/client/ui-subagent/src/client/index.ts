@@ -7,6 +7,7 @@ import { SubagentHeaderLineage, type SubagentCatalogInjected } from './SubagentH
 import {
   SubagentReadOnlyComposer, type SubagentReadOnlyMatch,
 } from './SubagentReadOnlyComposer.tsx'
+import { SubagentDetailsView } from './SubagentDetailsView.tsx'
 import type {} from '@deepseek-ai/dsh-client-locale/client'
 import { en, NS, zh, type SubagentKey } from './locales.ts'
 
@@ -73,5 +74,16 @@ export function apply(ctx: ClientContext): void {
       locale: NS,
       select: selectReadOnlySubagent,
     }, SubagentReadOnlyComposer),
+  )
+  ctx.slots.inject(
+    'conversation.details.subagent',
+    () => ctx.slots.register({
+      name: 'conversation.details.subagent',
+      locale: NS,
+      inject: () => ({
+        open: (id: SessionId) => sessions.open(id),
+        sessions,
+      }),
+    }, SubagentDetailsView),
   )
 }

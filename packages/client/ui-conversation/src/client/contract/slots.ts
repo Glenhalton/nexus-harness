@@ -161,6 +161,8 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
      * instead; this one is the whole panel.
      */
     'conversation.details.tool': { kind: 'single'; scope: 'session'; owner: DetailsToolOwnerProps }
+    /** Subagent catalog panel replacement. */
+    'conversation.details.subagent': { kind: 'single'; scope: 'session'; owner: DetailsSubagentOwnerProps }
     /**
      * The composer takeover chain: entries are selector-routed replacements
      * of the default InputBar. Declared by this package's 'conversation'
@@ -323,6 +325,8 @@ export interface ConversationHeaderLineageOwnerProps {
   displayTitle: string
   /** Navigate to an ancestor title when its combined control is clicked. */
   openTitle?: () => void
+  /** Open the side-by-side subagent view in the Details Panel. */
+  openSubagentDetails?: (sessionId: string) => void
 }
 
 /**
@@ -438,6 +442,10 @@ export interface DetailsToolOwnerProps {
   cwd?: string | undefined
 }
 
+export interface DetailsSubagentOwnerProps {
+  sessionId: string
+}
+
 /**
  * Owner share of the per-command row slot: the frozen {@link CommandNode}
  * slice off the snapshot (cache-stable reference — memo premise). The node
@@ -508,6 +516,8 @@ export interface ConversationSessionHeaderInjected {
   }
   /** Select a real Session through the runtime navigation owner. */
   open: (sessionId: SessionId) => void
+  /** Open the Details column. */
+  openDetails: () => void
 }
 
 /**
