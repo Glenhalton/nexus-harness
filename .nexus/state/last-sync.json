@@ -1,0 +1,48 @@
+{
+  "capturedAt": "2026-09-07T09:38:23.926Z",
+  "git": {
+    "branch": "master",
+    "isDirty": true,
+    "lastCommit": "3f4d4ae31e — chore(nexus): upgraded to nexus v1.5.2 · Glenhalton Takor · 3 minutes ago",
+    "aheadOfMain": 0
+  },
+  "files": {
+    "staleFolders": [
+      {
+        "folder": "src/commands",
+        "staleDays": -1
+      },
+      {
+        "folder": "src/utils",
+        "staleDays": -1
+      },
+      {
+        "folder": "src/generators",
+        "staleDays": -1
+      },
+      {
+        "folder": "tests/e2e",
+        "staleDays": -1
+      },
+      {
+        "folder": "tests/unit",
+        "staleDays": -1
+      },
+      {
+        "folder": "tests/integration",
+        "staleDays": -1
+      }
+    ]
+  },
+  "tests": {
+    "passed": null,
+    "failed": null,
+    "skipped": null,
+    "durationMs": null,
+    "source": null
+  },
+  "packages": {
+    "outdatedCount": null,
+    "vulnerableCount": null
+  }
+}

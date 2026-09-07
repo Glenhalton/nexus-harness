@@ -1,0 +1,58 @@
+{
+  "ranAt": "2026-09-07T09:59:00.838Z",
+  "summary": {
+    "info": 8,
+    "warn": 0,
+    "error": 0
+  },
+  "findings": [
+    {
+      "id": "D09",
+      "severity": "info",
+      "description": "No wake token (NX-WAKE-J9NF-2026-08-22) found in the last 20 commit message(s).",
+      "fixHint": "Include the wake token in commit metadata when using strict handshake discipline."
+    },
+    {
+      "id": "D14",
+      "severity": "info",
+      "description": "6 instruction files are near-identical in size (CLAUDE.md, AGENTS.md, .cursorrules, .windsurfrules, .clinerules, .github/copilot-instructions.md). That is expected for NEXUS-generated files — they share one generator — but hand-edits to one will not reach the others.",
+      "fixHint": "Edit `.nexus/ai/instructions.md` and run `nexus upgrade`, rather than editing a tool file directly."
+    },
+    {
+      "id": "D14",
+      "severity": "info",
+      "description": "Project-total orientation for CLAUDE.md is 19.6 KB (CLAUDE.md + one nexus_get_context pack (<=3000 tokens)), over its 16.0 KB orientation budget. Everything the agent's own protocol reads before doing anything must fit, not just the instruction file by itself.",
+      "fixHint": "Declare .nexus/harnesses.yml with an orientation_budget for the harnesses this project targets, then run `nexus upgrade` to regenerate within it."
+    },
+    {
+      "id": "D14",
+      "severity": "info",
+      "description": "Project-total orientation for AGENTS.md is 19.6 KB (AGENTS.md + one nexus_get_context pack (<=3000 tokens)), over its 16.0 KB orientation budget. Everything the agent's own protocol reads before doing anything must fit, not just the instruction file by itself.",
+      "fixHint": "Declare .nexus/harnesses.yml with an orientation_budget for the harnesses this project targets, then run `nexus upgrade` to regenerate within it."
+    },
+    {
+      "id": "D14",
+      "severity": "info",
+      "description": "Project-total orientation for .cursorrules is 19.6 KB (.cursorrules + one nexus_get_context pack (<=3000 tokens)), over its 16.0 KB orientation budget. Everything the agent's own protocol reads before doing anything must fit, not just the instruction file by itself.",
+      "fixHint": "Declare .nexus/harnesses.yml with an orientation_budget for the harnesses this project targets, then run `nexus upgrade` to regenerate within it."
+    },
+    {
+      "id": "D14",
+      "severity": "info",
+      "description": "Project-total orientation for .windsurfrules is 19.6 KB (.windsurfrules + one nexus_get_context pack (<=3000 tokens)), over its 16.0 KB orientation budget. Everything the agent's own protocol reads before doing anything must fit, not just the instruction file by itself.",
+      "fixHint": "Declare .nexus/harnesses.yml with an orientation_budget for the harnesses this project targets, then run `nexus upgrade` to regenerate within it."
+    },
+    {
+      "id": "D14",
+      "severity": "info",
+      "description": "Project-total orientation for .clinerules is 19.6 KB (.clinerules + one nexus_get_context pack (<=3000 tokens)), over its 16.0 KB orientation budget. Everything the agent's own protocol reads before doing anything must fit, not just the instruction file by itself.",
+      "fixHint": "Declare .nexus/harnesses.yml with an orientation_budget for the harnesses this project targets, then run `nexus upgrade` to regenerate within it."
+    },
+    {
+      "id": "D14",
+      "severity": "info",
+      "description": "Project-total orientation for .github/copilot-instructions.md is 19.6 KB (.github/copilot-instructions.md + one nexus_get_context pack (<=3000 tokens)), over its 16.0 KB orientation budget. Everything the agent's own protocol reads before doing anything must fit, not just the instruction file by itself.",
+      "fixHint": "Declare .nexus/harnesses.yml with an orientation_budget for the harnesses this project targets, then run `nexus upgrade` to regenerate within it."
+    }
+  ]
+}

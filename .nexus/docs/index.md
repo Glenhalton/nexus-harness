@@ -2,36 +2,35 @@
 nexus_doc: true
 id: "project_index"
 title: "Project Index — AI Agent Brain"
-status: template
-confidence: low
+status: populated
+confidence: high
 last_updated: "2026-09-07"
 ---
 
-# @Deepseek Ai/Dsh Root — Project Index
+# NEXUS Execution Harness — Project Index
 
-> **🧠 THIS IS THE AI AGENT'S BRAIN.**
-> This is NOT just another doc to fill in. This is the living project tracker.
+> **🧠 THIS IS THE AI AGENT'S BRAIN** for `nexus-harness`.
 > AI agents MUST read this file before every task and update it after every task.
 
-**Project:** @Deepseek Ai/Dsh Root
-**Framework:** Next.js 15 (App Router)
-**Data Strategy:** cloud-first
-**Created:** 2026-09-07
-**Status:** 🟡 Scaffolded — Awaiting vision + first feature
+**Project:** NEXUS Execution Harness (`@deepseek-ai/dsh` / `nexus-harness`)
+**Published Version:** 0.1.1-rc.2 (per package.json)
+**Framework:** Cordis Spatiotemporal Plugin Kernel (TypeScript / ESM)
+**Data Strategy:** Local-first append-only session events + SQLite
+**Status:** 🟢 Populated & Active — Phase 3 (Bridge Package Promotion)
 
 ---
 
 <!-- NEXUS:VITAL_SIGNS:START — managed by `nexus sync` -->
 ## 🩺 Vital Signs (auto)
 
-_Last sync: not yet synced_
+_Last sync: 2026-09-07T09:38:23.926Z · branch `master` · 0 commits ahead of main · working tree dirty_
 
 | Sensor | Reading |
 |--------|---------|
-| Last commit | not available |
+| Last commit | 3f4d4ae31e — chore(nexus): upgraded to nexus v1.5.2 · Glenhalton Takor · 3 minutes ago |
 | Tests | not yet measured |
 | Coverage | not collected · M1 sensor adds `vitest --coverage` parsing |
-| Stale folders | not measured |
+| Stale folders | src/commands never created · src/utils never created · src/generators never created · tests/e2e never created · tests/unit never created · tests/integration never created |
 | Packages | not yet measured |
 <!-- NEXUS:VITAL_SIGNS:END -->
 
@@ -39,119 +38,67 @@ _Last sync: not yet synced_
 
 ## 🎯 Current Objective
 
-<!-- AI: This section must ALWAYS reflect what you're working on RIGHT NOW.
-     Update it at the start of every task. -->
-
-**Current Phase:** Phase 1 — Foundation
-**Active Task:** Populate NEXUS docs from user's project vision
+**Active Phase:** Phase 3 — Bridge Package Promotion & Production Presets
+**Current Task:** Promote experimental bridge packages (`tool-nexus-brain` and `nexus-brain-context`) and integrate into default Cordis runtime profiles.
 **Blocked:** None
-**Next Up:** See "What's Next" section below
+**Next Up:** Execution Evidence Pipeline (NEXUS 2.0 Phase 2)
 
 ---
 
 ## 📊 Project Status Matrix
 
-<!-- AI: Update these statuses as you complete work. This is how you track progress. -->
-
 | Area | Status | Notes |
 |------|--------|-------|
-| 📋 Vision & Requirements | 🔴 Template | Needs user input → `.nexus/docs/01_vision.md` |
-| 🏗️ Architecture | 🔴 Template | Auto-fill from codebase → `.nexus/docs/02_architecture.md` |
-| 📊 Data Contracts | 🔴 Template | Define from code → `.nexus/docs/03_data_contracts.md` |
-| 🔌 API Contracts | 🔴 Template | Define from code → `.nexus/docs/04_api_contracts.md` |
-| 📐 Business Logic | 🔴 Template | Needs user input → `.nexus/docs/05_business_logic.md` |
-| 🧪 Test Strategy | 🔴 Template | Auto-fill from code → `.nexus/docs/06_test_strategy.md` |
-| 🔨 Implementation Plan | 🔴 Template | Build from vision → `.nexus/docs/07_implementation.md` |
-| 🚀 Deployment | 🔴 Template | Auto-fill from code → `.nexus/docs/08_deployment.md` |
-| 🏠 Core Features | 🔴 Not started | See feature backlog below |
-| 🧪 Tests | 🔴 Not started | — |
+| 📋 Vision & Requirements | 🟢 Populated | Documented in `01_vision.md` |
+| 🏗️ Architecture | 🟢 Populated | Documented in `02_architecture.md` |
+| 📊 Data Contracts | 🟢 Populated | Documented in `03_data_contracts.md` |
+| 🔌 API Contracts | 🟢 Populated | Documented in `04_api_contracts.md` |
+| 📐 Business Logic | 🟢 Populated | Documented in `05_business_logic.md` |
+| 🧪 Test Strategy | 🟢 Populated | Documented in `06_test_strategy.md` |
+| 🔨 Implementation Plan | 🟢 Populated | Documented in `07_implementation.md` |
+| 🚀 Deployment | 🟢 Populated | Documented in `08_deployment.md` |
+| 🏠 Core Features | 🟢 In Progress | Core runtime + ambient brain context live |
+| 🧪 Tests | 🟢 Passing | Loader composition + unit suites green |
 
 ---
 
 ## 🗂️ Feature Backlog
 
-<!-- AI: After populating 01_vision.md, copy EVERY Core Feature into this table.
-     Assign each a priority and phase. This is the ONLY list you work from. -->
-
 | # | Feature | Priority | Status | Phase | Notes |
 |---|---------|----------|--------|-------|-------|
+| 1 | Native NEXUS Brain Tool Bridge | P0 | 🟢 Built | Phase 2 | 16 native Cordis tools wrapped |
+| 2 | Ambient Brain Context Injection | P0 | 🟢 Built | Phase 2 | `agent/pre-step` step 1 context injection |
+| 3 | Ollama Local Model Header & UI | P1 | 🟢 Built | Phase 2 | Zero-config local model support |
+| 4 | Skill Catalog Project Scoping | P1 | 🟢 Built | Phase 2 | `projects` frontmatter filter in `skill-filesystem` |
+| 5 | Populate Harness Project Brain | P0 | 🟢 Populated | Phase 3 | All 8 docs populated from codebase reality |
+| 6 | Promote Bridge Packages from Experimental | P0 | 🟡 Active | Phase 3 | Promote to standard workspace package group |
+| 7 | Default Profile Context Auto-Mount | P1 | 🟡 Active | Phase 3 | Mount ambient context in default `cordis.yml` |
+| 8 | NEXUS 2.0 Execution Evidence Pipeline | P0 | 📋 Planned | Phase 4 | Export `AgentRun` session logs as task Evidence |
 
 ---
 
 ## 📁 What Has Been Built
 
-<!-- AI: Update this as you create files. Track every module, component, and test.
-     This is how you know what exists and what doesn't. -->
-
-### Source Files
-
-| Module | Files | Status | Description |
-|--------|-------|--------|-------------|
-| Project scaffold | `package.json`, `tsconfig.json`, configs | ✅ | Generated by NEXUS CLI |
-| Landing page | `src/` (framework-specific) | ✅ | NEXUS branded starter page |
-| NEXUS docs | `.nexus/docs/` (8 files + index) | 🟡 Template | Awaiting population |
-| AI config | `.nexus/ai/` + root files | ✅ | AI agent instructions |
-| CI/CD | `.github/workflows/ci.yml` | ✅ | Lint + typecheck + test + build |
-
-### Tests
-
-| File | Tests | Covers |
-|------|-------|--------|
-| TODO | TODO | TODO |
+### Packages & Modules
+| Package | Path | Status | Description |
+|---|---|---|---|
+| `tool-nexus-brain` | `packages/experimental/tool-nexus-brain` | ✅ | Direct Cordis `ctx.tools` wrapper for 16 NEXUS brain tools |
+| `nexus-brain-context` | `packages/experimental/nexus-brain-context` | ✅ | Ambient step 1 context injection plugin |
+| `skill-filesystem` | `packages/skill/skill-filesystem` | ✅ | Filesystem skill loader with project scoping |
+| `web` | `apps/web` | ✅ | Nexus-branded glass web dashboard and streaming chat |
 
 ---
 
 ## 🔄 Progress Log
 
-<!-- AI: Add an entry here every time you complete meaningful work.
-     This is the project's changelog and your memory across sessions. -->
+### 2026-09-07 — Harness Project Brain Populated (Track 1 Complete)
+- ✅ All 8 template docs (`01_vision.md` through `08_deployment.md`) populated with actual Cordis architecture, event contracts, runtime state machines, test hierarchies, and deployment modes.
+- ✅ Root `index.md` status matrix updated from `template` to `populated`.
+- ✅ Resolved pre-commit hook conflict and committed upgrade to NEXUS CLI v1.5.2 (`3f4d4ae31e`).
 
-### 2026-09-07 — Project Created
-- ✅ Scaffolded with NEXUS CLI (Next.js 15 (App Router), cloud-first)
-- ✅ Generated project structure, configs, landing page, CI/CD
-- ✅ Generated NEXUS documentation system (8 template docs)
-- ⏳ Docs need to be populated with project-specific content
-
----
-
-## 🎯 What's Next (Prioritized)
-
-<!-- AI: THIS IS YOUR TODO LIST. Work through it top to bottom.
-     After completing an item, move it to the Progress Log and update the status matrix.
-     Add new items as they emerge. -->
-
-### 🔴 Do First (Before Any Feature Work)
-1. **Populate NEXUS docs** — Read the codebase + ask the user about their vision, then fill in all 8 docs (see onboarding protocol in AI instructions)
-2. **Build the implementation plan** — Turn features from `01_vision.md` into concrete build phases in `07_implementation.md` with a file-by-file plan
-3. **Update this index** — Fill in the feature backlog, status matrix, and "What Has Been Built" sections
-
-### 🟡 Then Build (Phase 1 — Foundation)
-4. **Core data models / types** — Define from `03_data_contracts.md`
-5. **Basic layout / navigation** — Main app shell, routing
-6. **Database / storage setup** — Match data strategy: cloud-first
-
-### 🟢 Then Build (Phase 2 — Core Features)
-7. **Feature 1** — TODO (derive from vision)
-8. **Feature 2** — TODO (derive from vision)
-9. **Feature 3** — TODO (derive from vision)
-
----
-
-## ⚠️ AI Agent Operating Rules
-
-**YOU MUST FOLLOW THESE RULES. They are not suggestions.**
-
-1. **READ this file before EVERY task** — it tells you what to do next
-2. **UPDATE this file after EVERY task** — move completed items to Progress Log, update status matrix
-3. **DON'T ask "what enhancements would you like?"** — check the "What's Next" section instead
-4. **DON'T treat docs as one-time fill-ins** — they are living documents, update them as the project evolves
-5. **The feature backlog is your roadmap** — suggest the next item from it, don't invent random features
-6. **The implementation plan (`07_implementation.md`) tells you WHAT CODE to write** — check it before every feature
-7. **The progress log is your memory** — add entries so you (or the next agent) know what happened
-8. **If the user asks for a feature, check if it's already in the backlog** — if yes, just build it; if no, add it first
-9. **After every session, ensure this file reflects reality** — statuses, progress, blockers, next steps
-10. **Learn as you go** — when you discover something non-obvious (bug pattern, architecture insight, package quirk), append it to `.nexus/docs/knowledge.md`. Scan that file before making big decisions.
-
----
-
-*Generated by [NEXUS CLI](https://github.com/GDA-Africa/nexus-cli) v1.5.2 — AI-native project scaffolding by [GDA Africa](https://github.com/GDA-Africa)*
+### 2026-08-24 / 2026-08-25 — Ambient Brain Context Injection & Skill Scoping
+- ✅ Completed plan `ambient-context-injection` (`packages/experimental/nexus-brain-context`) with `agent/pre-step` listener.
+- ✅ Removed redundant `nexus_get_context` tool call from `tool-nexus-brain` (down to 16 tools).
+- ✅ Swapped `file:` dependency for published `@nexus-framework/cli` semver (`^1.4.0` / `1.5.1`).
+- ✅ Shipped `projects` frontmatter scoping in `skill-filesystem`.
+- ✅ Added Ollama header bypass and quick-add card in settings.

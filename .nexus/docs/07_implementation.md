@@ -1,92 +1,40 @@
 ---
 nexus_doc: true
 id: "07_implementation"
-title: "Implementation Plan"
-status: template
-confidence: low
+title: "Implementation Plan & Phases"
+status: populated
+confidence: high
 last_updated: "2026-09-07"
 ---
 
-# Implementation Plan
+# Implementation Plan & Phases — NEXUS Execution Harness
 
-**Project:** @Deepseek Ai/Dsh Root
-
----
-
-## 🎯 Current Phase
-
-<!-- AI: After populating this doc, set the current phase based on what exists in the codebase. -->
-
-**Active Phase:** TODO — Set this to the current build phase
-**Blocked:** None
+**Project:** NEXUS Execution Harness (`@deepseek-ai/dsh`)
+**Active Phase:** Phase 3 — Bridge Package Promotion & Production Presets
 
 ---
 
-## 🔨 Build Phases
+## 🎯 Implementation Roadmap
 
-<!-- AI: Derive these phases from 01_vision.md features. Each phase should be a coherent milestone. -->
+### Phase 1: Cordis Kernel & Core Subsystems (✅ Complete)
+- Cordis spatiotemporal plugin kernel and profile composition (`web`, `headless`).
+- Append-only `SessionEvent` store and in-memory session query index.
+- LLM streaming adapters (`deepseek`, `ollama`, `anthropic`, `openai`).
+- Tool execution pipeline with permission gating and sandboxed filesystem.
 
-### Phase 1: Foundation
-**Goal:** Project skeleton, core data models, basic navigation
+### Phase 2: NEXUS Brain Integration & Local AI (✅ Complete)
+- Built `packages/experimental/tool-nexus-brain` exposing 16 NEXUS tools directly to Cordis.
+- Built `packages/experimental/nexus-brain-context` for ambient, step-1 context injection.
+- Replaced local `file:` dependency with published `@nexus-framework/cli` semver (`^1.4.0` / `1.5.1`).
+- Added Ollama header bypass and quick-add card in Web UI.
+- Implemented `projects` frontmatter scoping in `skill-filesystem`.
 
-| Task | File(s) | Status | Notes |
-|------|---------|--------|-------|
-| Project setup | (auto) | ✅ Done by NEXUS CLI | — |
-| Core data models / types | `src/types/` or `src/lib/` | TODO | Define from 03_data_contracts.md |
-| Basic layout / navigation | `src/app/` or `src/routes/` | TODO | — |
-| Database / storage setup | `src/lib/` | TODO | Match data strategy: cloud-first |
+### Phase 3: Bridge Package Promotion & Production Presets (🟡 Active)
+- Promote `tool-nexus-brain` and `nexus-brain-context` from `packages/experimental/` to first-class workspace packages.
+- Wire ambient context injection into default runtime profiles so every session gets project grounding automatically.
+- Clean up allowlists and verify workspace invariant suites.
 
-### Phase 2: Core Features (MVP)
-**Goal:** Implement the features from 01_vision.md that make this usable
-
-| Task | File(s) | Status | Notes |
-|------|---------|--------|-------|
-| Feature 1 | TODO | TODO | — |
-| Feature 2 | TODO | TODO | — |
-| Feature 3 | TODO | TODO | — |
-
-### Phase 3: Polish & Quality
-**Goal:** Error handling, loading states, tests, responsive design
-
-| Task | File(s) | Status | Notes |
-|------|---------|--------|-------|
-| Error boundaries / handling | TODO | TODO | — |
-| Loading / skeleton states | TODO | TODO | — |
-| Unit tests for core logic | `tests/unit/` | TODO | Match 06_test_strategy.md |
-| Responsive design | TODO | TODO | — |
-
-### Phase 4: Deployment
-**Goal:** CI/CD, environment config, production deploy
-
-| Task | File(s) | Status | Notes |
-|------|---------|--------|-------|
-| CI/CD pipeline | `.github/workflows/` | ✅ Generated | — |
-| Environment variables | `.env.example` | TODO | See 08_deployment.md |
-| Production deploy | TODO | TODO | — |
-
----
-
-## 📁 File-by-File Plan
-
-<!-- AI: After populating 01_vision.md, list every file that needs creating.
-     Also copy each feature into .nexus/docs/index.md Feature Backlog table. -->
-
-| # | File Path | Purpose | Status |
-|---|-----------|---------|--------|
-
----
-
-## 🧪 Testing Plan
-
-| Test File | What It Tests | Status |
-|-----------|--------------|--------|
-
----
-
-## ⚠️ AI Agent: How To Use This File
-
-1. **Derive phases from `01_vision.md`** — turn user stories into build phases
-2. **Copy each feature into `.nexus/docs/index.md` Feature Backlog** — that drives all work
-3. **Fill the file-by-file plan** — list every file with its purpose
-4. **Update status as you work** — mark tasks ✅ when done
-5. **This file answers "what code do I write next?"**
+### Phase 4: NEXUS 2.0 Execution Evidence Pipeline (📋 Planned)
+- Implement an execution evidence exporter that transforms session event logs into machine-readable evidence for NEXUS tasks.
+- Connect test verification and task settlement to verifiable `AgentRun` records.
+- Integrate with `nexus-cli`'s Provable Done manifest.
