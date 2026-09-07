@@ -15,6 +15,8 @@
 }
 
 .card {
+  position: relative;
+  isolation: isolate;
   display: flex;
   overflow: hidden;
   flex-direction: column;
@@ -26,7 +28,6 @@
   max-height: min(60vh, 520px);
   border: 1px solid var(--dsw-alias-state-warn-secondary);
   border-radius: 20px;
-  background: var(--dsw-specific-input-major);
   box-shadow: var(--dsw-shadow-lv2);
   color: var(--dsw-alias-label-primary);
   /* Elevated surface in dark: the plan body inside scrolls once the card hits
@@ -34,6 +35,17 @@
      styles/scrollbar.css for the rebinding contract). */
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--dsw-specific-input-major);
+  backdrop-filter: var(--dsh-glass-backdrop);
+  pointer-events: none;
 }
 
 .card,

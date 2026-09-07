@@ -10,6 +10,8 @@
 /* Figma Input 973:36348 body over the 1019:36938 header: no banner strip —
    the card keeps zero padding and sections carry their own insets. */
 .card {
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -21,7 +23,6 @@
   padding: 0 0 10px;
   border: 1px solid var(--dsw-alias-border-l2-darkmode-thin);
   border-radius: 20px;
-  background: var(--dsw-specific-input-major);
   box-shadow: var(--dsw-shadow-lv2);
   color: var(--dsw-alias-label-primary);
   overflow: hidden;
@@ -32,6 +33,17 @@
      for the rebinding contract). */
   --dsh-scrollbar-thumb: var(--dsw-alias-scrollbar-bg-l2);
   --dsh-scrollbar-thumb-hover: var(--dsw-alias-scrollbar-hover-l2);
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--dsw-specific-input-major);
+  backdrop-filter: var(--dsh-glass-backdrop);
+  pointer-events: none;
 }
 
 .card,
