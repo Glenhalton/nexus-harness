@@ -362,7 +362,7 @@ describe('DetailsPanel diff Output section', () => {
     }
   }
 
-  const target: SelectionTarget = { turnSeq: 10, callId: 'c1', toolName: 'edit' }
+  const target: SelectionTarget = { kind: 'tool', turnSeq: 10, callId: 'c1', toolName: 'edit' }
 
   it('renders the applied diff at full height, keeping the JSON Input section', () => {
     const view = mount(snapshot({ nodes: [settled()] }), target)

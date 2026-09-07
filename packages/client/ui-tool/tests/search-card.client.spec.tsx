@@ -427,8 +427,8 @@ describe('DetailsPanel Output section (search)', () => {
     }
   }
 
-  const grepTarget: SelectionTarget = { turnSeq: 10, callId: 'c1', toolName: 'grep' }
-  const globTarget: SelectionTarget = { turnSeq: 11, callId: 'c2', toolName: 'glob' }
+  const grepTarget: SelectionTarget = { kind: 'tool', turnSeq: 10, callId: 'c1', toolName: 'grep' }
+  const globTarget: SelectionTarget = { kind: 'tool', turnSeq: 11, callId: 'c2', toolName: 'glob' }
 
   it('renders the grep matches card at full height, keeping the JSON Input section', () => {
     const view = mount(snapshot({ nodes: [settledGrep()] }), grepTarget)

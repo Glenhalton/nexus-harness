@@ -116,7 +116,7 @@ describe('render branch tails', () => {
     localStorage.clear()
     const snap = snapshotBase()
     const chat = createChatStore().create()
-    chat.actions.select({ turnSeq: 1, callId: 'ghost' } satisfies SelectionTarget)
+    chat.actions.select({ kind: 'tool', turnSeq: 1, callId: 'ghost' } satisfies SelectionTarget)
     const emptyList = createSnapshotStore<SessionListState>(
       { ids: [], byId: {}, current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined })
     const emptyWorkspaces = createSnapshotStore<WorkspaceListState>({
@@ -172,7 +172,7 @@ describe('render branch tails', () => {
     }]
     snap.chat = chatSnapshotFixture({ runningCalls: snap.runningCalls })
     const chat = createChatStore().create()
-    chat.actions.select({ turnSeq: 9, callId: 'p1:code:1:code:1', toolName: 'read' } satisfies SelectionTarget)
+    chat.actions.select({ kind: 'tool', turnSeq: 9, callId: 'p1:code:1:code:1', toolName: 'read' } satisfies SelectionTarget)
     const emptyList = createSnapshotStore<SessionListState>(
       { ids: [], byId: {}, current: undefined, phase: 'ready', subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined })
     const emptyWorkspaces = createSnapshotStore<WorkspaceListState>({

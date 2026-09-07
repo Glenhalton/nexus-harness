@@ -223,8 +223,8 @@ describe('conversation slot inject API', () => {
   it('openDetails (chat view face) writes the selection through the store actions and opens the panel', async () => {
     const b = await bench()
     const { instance, injected } = b.chatViewApi(ROOT)
-    injected.openDetails({ turnSeq: 2, callId: 'c1' })
-    expect(instance.store.getSnapshot().selection).toEqual({ turnSeq: 2, callId: 'c1' })
+    injected.openDetails({ kind: 'tool', turnSeq: 2, callId: 'c1' })
+    expect(instance.store.getSnapshot().selection).toEqual({ kind: 'tool', turnSeq: 2, callId: 'c1' })
     expect(b.layoutFake.openDetails).toHaveBeenCalledTimes(1)
     // The chat view shares the conversation entry's store instance: selection
     // writes land where the skeleton and details read.

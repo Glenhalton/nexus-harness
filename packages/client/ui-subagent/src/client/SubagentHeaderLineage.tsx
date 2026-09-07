@@ -437,7 +437,7 @@ function CatalogRows({
                       refresh={refresh}
                       toggleBranch={toggleBranch}
                       closeCatalog={closeCatalog}
-                      openSubagentDetails={openSubagentDetails}
+                      {...openSubagentDetails === undefined ? {} : { openSubagentDetails }}
                       t={t}
                     />
                   )}
@@ -814,7 +814,7 @@ function CatalogDropdown({
             refresh={refresh}
             toggleBranch={toggleBranch}
             closeCatalog={() => { changeOpen(false) }}
-            openSubagentDetails={openSubagentDetails}
+            {...openSubagentDetails === undefined ? {} : { openSubagentDetails }}
             t={t}
           />
         </div>
@@ -836,7 +836,8 @@ export function SubagentHeaderLineage({
     const summary = state.byId[lineageSessionId]
     return summary?.origin === 'subagent' ? summary.parentId : undefined
   })
-  const shared = { useSessions, openChild, refresh, setCatalogOpen, openSubagentDetails, t }
+  const shared = { useSessions, openChild, refresh, setCatalogOpen, t }
+  const subagentDetails = openSubagentDetails === undefined ? {} : { openSubagentDetails }
   if (parentId === undefined) {
     return (
       <CatalogDropdown
@@ -845,6 +846,7 @@ export function SubagentHeaderLineage({
         variant="count"
         separator
         {...shared}
+        {...subagentDetails}
       />
     )
   }
@@ -858,6 +860,7 @@ export function SubagentHeaderLineage({
         displayTitle={displayTitle}
         {...openTitle === undefined ? {} : { openTitle }}
         {...shared}
+        {...subagentDetails}
       />
       {openTitle === undefined && (
         <CatalogDropdown
@@ -865,6 +868,7 @@ export function SubagentHeaderLineage({
           rootSessionId={lineageSessionId}
           variant="count"
           {...shared}
+          {...subagentDetails}
         />
       )}
     </>

@@ -46,8 +46,8 @@ describe('selection survives on the store seat', () => {
 
     const conv = storeFor(b, 'conversation.session', sid('s1'))
     const details = storeFor(b, 'details', sid('s1'))
-    conv.actions.select({ turnSeq: 3, callId: 'c1' })
-    expect(details.store.getSnapshot().selection).toEqual({ turnSeq: 3, callId: 'c1' })
+    conv.actions.select({ kind: 'tool', turnSeq: 3, callId: 'c1' })
+    expect(details.store.getSnapshot().selection).toEqual({ kind: 'tool', turnSeq: 3, callId: 'c1' })
     // Identity, not just value: the shared handle resolves one instance per scope key.
     expect(details).toBe(conv)
     await b.runtime.dispose()
@@ -59,10 +59,10 @@ describe('selection survives on the store seat', () => {
     const one = storeFor(b, 'conversation.session', sid('s1'))
     const two = storeFor(b, 'conversation.session', sid('s2'))
     expect(two).not.toBe(one)
-    one.actions.select({ turnSeq: 1, callId: 'a' })
-    two.actions.select({ turnSeq: 9, callId: 'z' })
-    expect(one.store.getSnapshot().selection).toEqual({ turnSeq: 1, callId: 'a' })
-    expect(two.store.getSnapshot().selection).toEqual({ turnSeq: 9, callId: 'z' })
+    one.actions.select({ kind: 'tool', turnSeq: 1, callId: 'a' })
+    two.actions.select({ kind: 'tool', turnSeq: 9, callId: 'z' })
+    expect(one.store.getSnapshot().selection).toEqual({ kind: 'tool', turnSeq: 1, callId: 'a' })
+    expect(two.store.getSnapshot().selection).toEqual({ kind: 'tool', turnSeq: 9, callId: 'z' })
     await b.runtime.dispose()
   })
 
@@ -71,7 +71,7 @@ describe('selection survives on the store seat', () => {
     const id = sid('s1')
 
     const store = storeFor(b, 'conversation.session', id)
-    store.actions.select({ turnSeq: 3, callId: 'c1' })
+    store.actions.select({ kind: 'tool', turnSeq: 3, callId: 'c1' })
     store.actions.setDraft('half-typed')
 
     // A projection churn elsewhere (list rows re-projected) must not touch
@@ -81,7 +81,7 @@ describe('selection survives on the store seat', () => {
 
     const after = storeFor(b, 'conversation.session', id)
     expect(after).toBe(store)
-    expect(after.store.getSnapshot().selection).toEqual({ turnSeq: 3, callId: 'c1' })
+    expect(after.store.getSnapshot().selection).toEqual({ kind: 'tool', turnSeq: 3, callId: 'c1' })
     expect(after.store.getSnapshot().draft).toBe('half-typed')
     await b.runtime.dispose()
   })
@@ -92,7 +92,7 @@ describe('selection survives on the store seat', () => {
 
     const doomed = storeFor(b, 'conversation.session', sid('s1'))
     doomed.actions.setDraft('to be buried')
-    doomed.actions.select({ turnSeq: 1 })
+    doomed.actions.select({ kind: 'tool', turnSeq: 1 })
     expect(localStorage.getItem('dsh.conversation.chat.s1')).not.toBeNull()
 
     // TestSessions.remove drives the same public slot lifecycle contract the

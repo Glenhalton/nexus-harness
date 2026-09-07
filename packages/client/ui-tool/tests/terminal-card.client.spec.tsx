@@ -493,7 +493,7 @@ describe('DetailsPanel Output section', () => {
     }
   }
 
-  const target: SelectionTarget = { turnSeq: 10, callId: 'c1', toolName: 'bash' }
+  const target: SelectionTarget = { kind: 'tool', turnSeq: 10, callId: 'c1', toolName: 'bash' }
 
   // The panel never unmounts between selections, so per-call view state has to
   // be keyed off the selected call or it leaks into the next one.
@@ -510,7 +510,7 @@ describe('DetailsPanel Output section', () => {
       nodes: [settled({
         callId: 'c2', resultView: resultTerminal({ output: `${long.join('\n')}\n` }),
       })],
-    }), { turnSeq: 10, callId: 'c2', toolName: 'bash' })
+    }), { kind: 'tool', turnSeq: 10, callId: 'c2', toolName: 'bash' })
     expect(second.getByRole('button', { name: '展开其余 4 行输出' })).toBeTruthy()
   })
 
@@ -631,7 +631,7 @@ describe('DetailsPanel Output section', () => {
   })
 
   it('a step selection without a callId renders the guidance line too', () => {
-    const view = mount(snapshot(), { turnSeq: 3, stepSeq: 1 })
+    const view = mount(snapshot(), { kind: 'tool', turnSeq: 3, stepSeq: 1 })
     expect(view.getByText('点击消息流中的工具行查看详情')).toBeTruthy()
   })
 

@@ -322,7 +322,7 @@ describe('DetailsPanel Output section (read)', () => {
     }
   }
 
-  const target: SelectionTarget = { turnSeq: 10, callId: 'c1', toolName: 'read' }
+  const target: SelectionTarget = { kind: 'tool', turnSeq: 10, callId: 'c1', toolName: 'read' }
 
   it('renders the read card at full height, keeping the JSON Input section', () => {
     const long = Array.from({ length: 20 }, (_, i) => ({ number: i + 1, text: `row-${i}` }))
