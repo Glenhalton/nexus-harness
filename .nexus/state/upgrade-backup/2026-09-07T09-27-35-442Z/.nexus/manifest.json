@@ -1,0 +1,29 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-08-25T12:02:47.686Z",
+  "config": {
+    "projectName": "@deepseek-ai/dsh-root",
+    "displayName": "@Deepseek Ai/Dsh Root",
+    "projectType": "web",
+    "dataStrategy": "cloud-first",
+    "appPatterns": [],
+    "frontendFramework": "nextjs",
+    "backendStrategy": "integrated",
+    "backendFramework": "none",
+    "testFramework": "vitest",
+    "packageManager": "pnpm",
+    "git": true,
+    "installDeps": false,
+    "persona": {
+      "tone": "friendly",
+      "verbosity": "balanced",
+      "identity": "Nexus",
+      "customDirective": ""
+    }
+  },
+  "cli": {
+    "version": "1.5.1",
+    "name": "@nexus-framework/cli"
+  },
+  "localOnly": false
+}

@@ -4,7 +4,7 @@ id: "01_vision"
 title: "Product Vision & Requirements"
 status: template
 confidence: low
-last_updated: "2026-08-25"
+last_updated: "2026-09-07"
 ---
 
 # Product Vision & Requirements

@@ -4,7 +4,7 @@ id: "05_business_logic"
 title: "Business Logic"
 status: template
 confidence: low
-last_updated: "2026-08-25"
+last_updated: "2026-09-07"
 ---
 
 # Business Logic
