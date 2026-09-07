@@ -1,0 +1,10 @@
+{
+  "$schema": "https://nexus-framework.dev/schemas/verify.json",
+  "checks": [
+    {
+      "id": "bridge-tests",
+      "run": "npx vitest run packages/experimental/tool-nexus-brain packages/experimental/nexus-brain-context",
+      "timeout_ms": 60000
+    }
+  ]
+}

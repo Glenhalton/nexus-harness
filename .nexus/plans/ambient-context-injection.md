@@ -13,7 +13,6 @@ estimate: "3d"
 phase: "feature-delivery"
 tags: ["feature"]
 ---
-
 ## Goal
 Deliver NEXUS's composed context pack to a Cordis-hosted agent as ambient,
 no-tool-call context — via Cordis's `context/` package family — replacing the
@@ -30,7 +29,6 @@ without defining a tool) closes that gap for real, for any harness profile,
 not only the unreliable-tool-calling ones.
 
 ## Grilling
-
 **Ask:** Should NEXUS's context pack keep arriving as a tool call
 (`nexus_get_context`, current `tool-nexus-brain` shape), or move to ambient,
 no-round-trip injection via Cordis's `context/` family?
@@ -131,27 +129,20 @@ no-round-trip injection via Cordis's `context/` family?
   detour of its own.
 
 ## Evidence
-- `packages/experimental/nexus-brain-context/` — new package: `src/index.ts`
-  (the `agent/pre-step` listener), `src/invariant.ts` (package-owned
-  durable-invariant companion, required by `packages/AGENTS.md`'s
-  "every package owns `./invariant`" convention), `tests/nexus-brain-context.spec.ts`
-  (4 unit tests), `tests/loader-composition.spec.ts` (2 real-Loader-composition
-  tests, per `packages/AGENTS.md`'s "product-visible plugins require a
-  non-unit REAL-composition test" convention), `README.md`/`README.zh.md`.
-  Depends on `@nexus-framework/cli` via the same published `^1.4.0` range
-  `tool-nexus-brain` uses — no local-dependency allowlist entry needed.
-- `packages/experimental/tool-nexus-brain/` — `nexus_get_context` removed
-  from `src/index.ts` (17 tools → 16); `tests/tool-nexus-brain.spec.ts`,
-  `tests/coverage-sweep.spec.ts`, `tests/loader-composition.spec.ts` updated
-  to match; both READMEs updated.
-- `.agents/notes/implemented/feature/2026-08-22-nexus-brain-tool-bridge.md`
-  (+ `.zh.md`) — a second "Update, 2026-08-24" section added, recording the
-  split (the Chinese side also picked up the first update section, which
-  had been English-only since the dependency-swap commit).
-- `docs/tool-catalog.md` / `.zh.md` — regenerated/re-synced to the new
-  16-tool `tool-nexus-brain` surface.
-- `tsconfig.host.json` — new package registered in the host aggregate.
-- Full verification, both packages: `npx vitest run` (14/14 tests passing
-  across 6 files), `npx tsc -b` (clean), `npx tsx scripts/run-oxlint.ts`
-  (clean), `pnpm run verify-tool-catalog` (in sync), `pnpm run
-  verify-translation-pairing` (in sync for every file this plan touched).
+```json
+{
+  "verified_at": "2026-09-07T09:58:56.876Z",
+  "brain_hash": "4faa1c53c3f4b1f0f792c5aa06420360da5946ca685d1642b14ca4d97f2a2088",
+  "wake_token": "NX-WAKE-J9NF-2026-08-22",
+  "checks": [
+    {
+      "id": "bridge-tests",
+      "run": "npx vitest run packages/experimental/tool-nexus-brain packages/experimental/nexus-brain-context",
+      "exit": 0,
+      "duration_ms": 6624,
+      "output_sha256": "b0d361dde3f30bfab4bb69430a26c7b10469a80fb41dd841d7c2c1fd6ae2277a",
+      "summary": "6 passed"
+    }
+  ]
+}
+```
