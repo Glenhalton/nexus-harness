@@ -23,13 +23,15 @@
 
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import type { DiscoveredModelView, IApiClient } from '@deepseek-ai/dsh-api-remotes/client'
+import type { LlmDiscoveredModel } from '@deepseek-ai/dsh-api-remotes/client'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { apiKeyFailure } from './apiKey.ts'
 import { EditorFooter } from './EditorFooter.tsx'
 import { validateDeepSeekModels } from './DeepSeekModelsEditor.tsx'
 import { ModelListEditor } from './ModelListEditor.tsx'
 import type { ModelDraft } from './ModelListEditor.tsx'
-import { deriveKeyRef, messageOf } from './store.ts'
+import { deriveKeyRef } from './store.ts'
+import type { ModelsOperations } from './operations.ts'
 import { ROUTE_PATTERN } from './providerRoute.ts'
 import type { en } from './locales.ts'
 import styles from './ModelsSection.module.css'
@@ -76,6 +78,10 @@ const DEFAULTS: Readonly<Record<Mode, ModeDefaults>> = { local: LOCAL_DEFAULTS, 
  */
 const LOCAL_AUTH_HEADER = { Authorization: 'Bearer ollama' }
 
+function messageOf(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
 /** Props of {@link OllamaQuickAddCard}. */
 export interface OllamaQuickAddCardProps {
   /** Route ids already declared, so the card refuses to shadow one. */
@@ -86,18 +92,23 @@ export interface OllamaQuickAddCardProps {
    * than a silent overwrite of its whole profile.
    */
   revision: number
-  /** Wire faces for the write and for interrogating the endpoint. */
-  api: Pick<IApiClient, 'settings' | 'credentials' | 'llm'>
+  /** The Host operations this card writes and interrogates through. */
+  operations: ModelsOperations
   /** Section copy. */
   t: (key: keyof typeof en) => string
   /** Disable writes (read-only settings provider). */
   readOnly: boolean
   /** Close the card; `changed` reports whether a provider was created. */
   onClose: (changed: boolean) => void
+  /**
+   * Called once per change with whether the create or the list's endpoint
+   * interrogation is in flight, so the owner can hold its surface still.
+   */
+  onBusyChange?: (busy: boolean) => void
 }
 
 /** Adopt a discovered candidate, keeping whatever capacities the provider disclosed. */
-function adopt(candidate: DiscoveredModelView): ModelDraft {
+function adopt(candidate: LlmDiscoveredModel): ModelDraft {
   return {
     id: candidate.id,
     ...candidate.name === undefined ? {} : { name: candidate.name },
@@ -108,11 +119,11 @@ function adopt(candidate: DiscoveredModelView): ModelDraft {
 
 /**
  * Render the Ollama quick-add card.
- * @param props - existing routes, wire faces, and copy.
+ * @param props - existing routes, operations, and copy.
  * @returns the creation card.
  */
 export function OllamaQuickAddCard(props: OllamaQuickAddCardProps): ReactNode {
-  const { taken, api, t } = props
+  const { taken, operations, t, onBusyChange } = props
   // Captured at mount, like the generic custom card's: the write must be
   // judged against the section this card was drafted over.
   const [openedAt] = useState(() => props.revision)
@@ -123,6 +134,8 @@ export function OllamaQuickAddCard(props: OllamaQuickAddCardProps): ReactNode {
   const [keyDraft, setKeyDraft] = useState('')
   const [models, setModels] = useState<readonly ModelDraft[]>([])
   const [busy, setBusy] = useState(false)
+  const [listBusy, setListBusy] = useState(false)
+  useEffect(() => { onBusyChange?.(busy || listBusy) }, [busy, listBusy, onBusyChange])
   const [failure, setFailure] = useState<string | undefined>(undefined)
   const [committed, setCommitted] = useState(false)
   const [autoProbing, setAutoProbing] = useState(false)
@@ -156,13 +169,13 @@ export function OllamaQuickAddCard(props: OllamaQuickAddCardProps): ReactNode {
     setAutoFailure(undefined)
     void (async () => {
       try {
-        const response = await api.llm.discoverModels({ settingsNs: NS, baseURL, api: API })
+        const outcome = await operations.discoverModels(NS, { baseURL, api: API })
         if (superseded.signal.aborted) return
-        if (!response.result.ok) {
-          setAutoFailure(response.result.error.message)
+        if (outcome.kind !== 'found') {
+          setAutoFailure(outcome.message)
           return
         }
-        const found = response.result.value.models
+        const found = outcome.models
         if (found.length === 0) {
           setAutoFailure(t('fetchEmpty'))
           return
@@ -219,19 +232,21 @@ export function OllamaQuickAddCard(props: OllamaQuickAddCardProps): ReactNode {
         baseURL,
         models: models.map(model => ({ ...model })),
       }
-      const response = await api.settings.mutate({
-        ns: NS,
-        ops: [{ op: 'set', path: ['providers', route], value: profile }],
-        expectedRevision: openedAt,
-      })
-      if (!response.result.ok) return response.result.error.message
+      const written = await operations.writeSettings(
+        NS,
+        [{ op: 'set', path: ['providers', route], value: profile as JsonValue }],
+        openedAt,
+      )
+      if (written.kind !== 'written') {
+        return written.kind === 'conflict' ? t('conflict') : written.message
+      }
       // The provider now exists; a retry after the key write below must not
       // re-run this mutate against a revision it has already superseded.
       setCommitted(true)
     }
     if (storesKey) {
-      const stored = await api.credentials.set({ ref: keyRef, value: keyValue })
-      if (!stored.result.ok) return stored.result.error.message
+      const stored = await operations.storeCredential(keyRef, keyValue)
+      if (stored !== undefined) return stored
     }
     return undefined
   }
@@ -280,7 +295,6 @@ export function OllamaQuickAddCard(props: OllamaQuickAddCardProps): ReactNode {
             {t('ollamaModeCloud')}
           </button>
         </div>
-        <p className={styles['advancedHint']}>{t(mode === 'local' ? 'ollamaLocalHint' : 'ollamaCloudHint')}</p>
       </div>
       <div className={styles['field']}>
         <span className={styles['fieldLabel']}>{t('customRoute')}</span>
@@ -288,6 +302,7 @@ export function OllamaQuickAddCard(props: OllamaQuickAddCardProps): ReactNode {
           className={styles['input']}
           type="text"
           value={route}
+          placeholder={LOCAL_DEFAULTS.route}
           aria-label={t('customRoute')}
           disabled={profileDisabled}
           onChange={(event) => { setRoute(event.target.value) }}
@@ -302,6 +317,7 @@ export function OllamaQuickAddCard(props: OllamaQuickAddCardProps): ReactNode {
           className={styles['input']}
           type="text"
           value={displayName}
+          placeholder={route.length === 0 ? t('customDisplayName') : route}
           aria-label={t('customDisplayName')}
           disabled={profileDisabled}
           onChange={(event) => { setDisplayName(event.target.value) }}
@@ -313,11 +329,11 @@ export function OllamaQuickAddCard(props: OllamaQuickAddCardProps): ReactNode {
           className={styles['input']}
           type="text"
           value={baseURL}
+          placeholder={DEFAULTS[mode].baseURL}
           aria-label={t('baseUrl')}
           disabled={profileDisabled}
-          onChange={(event) => { setBaseURL(event.target.value); setAutoFailure(undefined) }}
+          onChange={(event) => { setBaseURL(event.target.value) }}
         />
-        <p className={styles['advancedHint']}>{t('ollamaProtocolNote')}</p>
       </div>
       {mode === 'cloud'
         ? (
@@ -326,9 +342,8 @@ export function OllamaQuickAddCard(props: OllamaQuickAddCardProps): ReactNode {
             <input
               className={styles['input']}
               type="password"
-              autoComplete="off"
               value={keyDraft}
-              placeholder={t('keyPlaceholder')}
+              placeholder="ollama_api_..."
               aria-label={t('keyInput')}
               disabled={disabled}
               onChange={(event) => { setKeyDraft(event.target.value) }}
@@ -356,9 +371,10 @@ export function OllamaQuickAddCard(props: OllamaQuickAddCardProps): ReactNode {
           ...mode === 'cloud' && keyValue.length > 0 ? { apiKey: keyValue } : {},
         }}
         probeBlocked={mode === 'cloud' ? (keyFailure === 'keyBlank' ? 'keyBlankNew' : keyFailure) : undefined}
-        api={api}
+        operations={operations}
         t={t}
         disabled={profileDisabled}
+        onBusyChange={setListBusy}
       />
       {failure !== undefined ? <p className={styles['error']}>{failure}</p> : null}
       {hint === undefined ? null : <p className={styles['advancedHint']}>{hint}</p>}
@@ -366,8 +382,8 @@ export function OllamaQuickAddCard(props: OllamaQuickAddCardProps): ReactNode {
         t={t}
         busy={busy}
         submitDisabled={disabled || !ready}
-        submitLabel="create"
-        submitBusyLabel="creating"
+        submitLabelKey="create"
+        submitBusyLabelKey="creating"
         onCancel={() => { props.onClose(committed) }}
         onSubmit={() => { void create() }}
       />

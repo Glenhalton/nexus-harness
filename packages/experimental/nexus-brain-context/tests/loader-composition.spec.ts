@@ -7,19 +7,27 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { Context, FiberState } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
 import { createUserMessage, LlmAdapter } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
 import LlmRuntime from '@deepseek-ai/dsh-llm'
 import SessionStore from '@deepseek-ai/dsh-session'
+import SessionProjectionRegistry from '@deepseek-ai/dsh-session-projection'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
+import type { ContextFormed } from '@deepseek-ai/dsh-llm'
 import * as NexusBrainContext from '../src/index.ts'
+
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    'nexus-brain-context': { kind: 'nexus-brain-context'; plugin: string } & ContextFormed
+  }
+}
 
 const FIXTURE_ROOT = resolve(import.meta.dirname, '../../tool-nexus-brain/tests/fixtures/nexus-project')
 
@@ -69,6 +77,7 @@ async function boot(projectRoot: string): Promise<{ ctx: Context; adapter: Scrip
   await writeFile(configPath, [
     "- name: '@deepseek-ai/dsh-llm'",
     "- name: '@deepseek-ai/dsh-session'",
+    "- name: '@deepseek-ai/dsh-session-projection'",
     "- name: '@deepseek-ai/dsh-system-prompt'",
     "- name: '@deepseek-ai/dsh-tools'",
     "- name: '@deepseek-ai/dsh-agent'",
@@ -89,6 +98,7 @@ async function boot(projectRoot: string): Promise<{ ctx: Context; adapter: Scrip
   const modules = new Map<string, unknown>([
     ['@deepseek-ai/dsh-llm', LlmRuntime],
     ['@deepseek-ai/dsh-session', SessionStore],
+    ['@deepseek-ai/dsh-session-projection', SessionProjectionRegistry],
     ['@deepseek-ai/dsh-system-prompt', SystemPrompt],
     ['@deepseek-ai/dsh-tools', ToolRuntime],
     ['@deepseek-ai/dsh-agent', AgentRegistry],
@@ -114,7 +124,7 @@ describe('nexus-brain-context real Loader composition through cordis.yml', () =>
   it('boots from cordis.yml and delivers the composed pack on the real outgoing model request', async () => {
     const { ctx, adapter } = await boot(FIXTURE_ROOT)
 
-    const agent = ctx.agentLoop.create(SessionId('loader-turn'), { provider: 'mock', model: 'mock' })
+    const agent = await ctx.agentLoop.create(SessionId('loader-turn'), { provider: 'mock', model: 'mock' })
     agent.followup(createUserMessage({
       content: [{ type: 'text', text: 'exercise the fixture plan' }],
       source: { kind: 'user' },
@@ -130,8 +140,8 @@ describe('nexus-brain-context real Loader composition through cordis.yml', () =>
     expect(requestText).toContain('<system-reminder>')
     expect(requestText).toContain('fixture-plan')
 
-    const injected = agent.session.events.filter(event => event.type === 'user/message'
-      && event.data.source.kind === 'plugin'
+    const injected = agent.session.snapshotEvents().filter(event => event.type === 'user/message'
+      && event.data.source.kind === 'nexus-brain-context'
       && event.data.source.plugin === 'nexus-brain-context')
     expect(injected).toHaveLength(1)
   }, 30_000)
@@ -139,7 +149,10 @@ describe('nexus-brain-context real Loader composition through cordis.yml', () =>
   it('fails loading when projectRoot has no .nexus/ directory', async () => {
     const bare = await mkdtemp(join(tmpdir(), 'dsh-nexus-brain-context-bare-'))
     try {
-      await expect(boot(bare)).rejects.toThrow(/No \.nexus\/ directory found/)
+      const { ctx } = await boot(bare)
+      const entry = [...ctx.loader.entries()].find(item => item.options.name === '@deepseek-ai/dsh-experimental-nexus-brain-context')
+      expect(entry?.fiber?.state).toBe(FiberState.FAILED)
+      await expect(entry?.fiber?.await()).rejects.toThrow(/No \.nexus\/ directory found/)
     } finally {
       await rm(bare, { recursive: true, force: true })
     }

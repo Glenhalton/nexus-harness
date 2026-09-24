@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { Session, SessionId } from '@deepseek-ai/dsh-session'
-import AgentRegistry, { agentEvents, Inbox, type Agent } from '@deepseek-ai/dsh-agent'
+import AgentRegistry, { agentEvents, type Agent } from '@deepseek-ai/dsh-agent'
+import { unsupportedInbox } from '@deepseek-ai/dsh-agent-loop-testkit'
 import * as NexusBrainContext from '../src/index.ts'
 import type { Config } from '../src/index.ts'
 
@@ -33,7 +34,7 @@ function sessionAgent(session: Session, id = 'agent'): Agent {
     id: SessionId(id),
     options: {},
     session,
-    inbox: new Inbox(session, { inserted: () => {}, discarded: () => {}, claimed: () => {} }),
+    inbox: unsupportedInbox(),
     status: 'running',
     ctx: new Context(),
     send: () => {},
@@ -85,7 +86,7 @@ describe('nexus-brain-context', () => {
     expect(text).toContain('nexus_get_context')
     expect(text).toContain('fixture-plan')
     expect(decision.messages[0]?.source).toEqual({
-      kind: 'plugin',
+      kind: 'nexus-brain-context',
       plugin: 'nexus-brain-context',
       form: 'snapshot',
       sections: [{ name: 'nexus-brain-context', text }],

@@ -4,7 +4,7 @@
 import { resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import * as ToolNexusBrain from '../src/index.ts'
@@ -59,7 +59,7 @@ describe('tool-nexus-brain', () => {
     const ctx = await mount(FIXTURE_ROOT)
     const result = await ctx.tools.execute({
       signal: new AbortController().signal,
-      callId: CallId('wake-1'),
+      callId: ToolCallId('wake-1'),
       name: 'nexus_wake',
       arguments: {},
     })
@@ -73,7 +73,7 @@ describe('tool-nexus-brain', () => {
     const ctx = await mount(FIXTURE_ROOT)
     const result = await ctx.tools.execute({
       signal: new AbortController().signal,
-      callId: CallId('get-plan-1'),
+      callId: ToolCallId('get-plan-1'),
       name: 'nexus_get_plan',
       arguments: { id: 'fixture-plan' },
     })
@@ -85,7 +85,7 @@ describe('tool-nexus-brain', () => {
     const ctx = await mount(FIXTURE_ROOT)
     const outOfRange = await ctx.tools.execute({
       signal: new AbortController().signal,
-      callId: CallId('tick-bad'),
+      callId: ToolCallId('tick-bad'),
       name: 'nexus_plan_tick',
       arguments: { id: 'fixture-plan', step: 99 },
     })

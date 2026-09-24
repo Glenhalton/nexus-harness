@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { ISessions, SessionId, ConversationSnapshot, ConversationNode } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ISessions } from '@deepseek-ai/dsh-api-session-controller/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
+import type { ConversationNode, UiConversation } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { DetailsSubagentOwnerProps } from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type { PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
 import { NS } from './locales.ts'
@@ -11,6 +13,7 @@ export type SubagentDetailsViewProps =
   & {
     open: (id: SessionId) => void
     sessions: ISessions
+    uiConversation?: UiConversation
   }
 
 function renderNodeContent(node: ConversationNode) {
@@ -30,21 +33,29 @@ function renderNodeContent(node: ConversationNode) {
   return <em>{node.kind} event</em>
 }
 
-export function SubagentDetailsView({ sessionId, open, sessions }: SubagentDetailsViewProps) {
-  const [snapshot, setSnapshot] = useState<ConversationSnapshot | null>(null)
+export function SubagentDetailsView({ sessionId, open, sessions, uiConversation }: SubagentDetailsViewProps) {
+  const [nodes, setNodes] = useState<readonly ConversationNode[] | null>(null)
 
   useEffect(() => {
-    const binding = sessions.binding(sessionId)
-    if (!binding) return
-    const session = binding.session
-    if (!session) return
-
-    setSnapshot(session.getSnapshot())
-    const off = session.subscribe(() => {
-      setSnapshot(session.getSnapshot())
-    })
+    if (!uiConversation) return
+    let bound: ReturnType<UiConversation['binding']> | undefined
+    try {
+      bound = uiConversation.binding(sessionId)
+    } catch {
+      return
+    }
+    if (!bound) return
+    const chatSource = bound.target('chat')
+    const update = () => {
+      const snap = chatSource.getSnapshot()
+      if (snap) {
+        setNodes(snap.legacy.nodes)
+      }
+    }
+    update()
+    const off = chatSource.subscribe(update)
     return off
-  }, [sessionId, sessions])
+  }, [sessionId, uiConversation])
 
   const summary = sessions.list.getSnapshot().byId[sessionId]
 
@@ -70,7 +81,7 @@ export function SubagentDetailsView({ sessionId, open, sessions }: SubagentDetai
       </div>
 
       <div style={{ padding: '16px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {snapshot?.nodes.map((node, index) => (
+        {nodes?.map((node, index) => (
           <div
             key={index}
             style={{
@@ -88,7 +99,7 @@ export function SubagentDetailsView({ sessionId, open, sessions }: SubagentDetai
             </div>
           </div>
         ))}
-        {!snapshot && <div style={{ padding: '16px' }}>Loading conversation...</div>}
+        {!nodes && <div style={{ padding: '16px' }}>Loading conversation...</div>}
       </div>
     </div>
   )

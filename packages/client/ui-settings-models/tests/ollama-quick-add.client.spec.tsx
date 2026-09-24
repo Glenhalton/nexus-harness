@@ -2,69 +2,66 @@
 /** The Ollama quick-add card: local auto-detection, cloud key gating, and the create write. */
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { RpcResponse } from '@deepseek-ai/dsh-api-remotes/client'
 import { OllamaQuickAddCard } from '../src/client/OllamaQuickAddCard.tsx'
 import type { ModelsSectionInjected } from '../src/client/ModelsSection.tsx'
+import type { ModelsOperations } from '../src/client/operations.ts'
 import { en } from '../src/client/locales.ts'
 
 afterEach(cleanup)
 
 const t: ModelsSectionInjected['t'] = key => en[key]
 
-let nextRpc = 0
-function ok<T>(value: T): RpcResponse<T> {
-  return { rpcId: `r-${nextRpc++}` as never, result: { ok: true, value } }
-}
-
-/** A wire face carrying only what the card reaches for. */
-function scriptedFace(options: {
+/** Scripted operations carrying only what the card reaches for. */
+function scriptedOperations(options: {
   discover?: ReturnType<typeof vi.fn>
   mutate?: ReturnType<typeof vi.fn>
   set?: ReturnType<typeof vi.fn>
 } = {}) {
-  const discover = options.discover ?? vi.fn(() => Promise.resolve(ok({ models: [] })))
-  const mutate = options.mutate ?? vi.fn(() => Promise.resolve(ok({})))
-  const set = options.set ?? vi.fn(() => Promise.resolve(ok({})))
-  const face = {
-    llm: { discoverModels: discover },
-    settings: { mutate },
-    credentials: { set },
+  const discover = options.discover ?? vi.fn((_ns: string, _req: unknown) => Promise.resolve({ kind: 'found' as const, models: [] }))
+  const mutate = options.mutate ?? vi.fn((_ns: string, _ops: unknown[], _rev: number | undefined) => Promise.resolve({ kind: 'written' as const, view: {} as never }))
+  const set = options.set ?? vi.fn((_ref: string, _val: string) => Promise.resolve(undefined))
+  const operations: ModelsOperations = {
+    describeCredential: vi.fn(() => Promise.resolve(undefined)),
+    storeCredential: set as never,
+    removeCredential: vi.fn(() => Promise.resolve(undefined)),
+    writeSettings: mutate as never,
+    discoverModels: discover as never,
   }
-  return { face, discover, mutate, set }
+  return { operations, discover, mutate, set }
 }
 
 /** The first interrogation payload; fails the case when nothing was asked. */
 function firstProbe(discover: ReturnType<typeof vi.fn>): unknown {
-  const call = (discover.mock.calls as unknown as [unknown][])[0]?.[0]
+  const call = (discover.mock.calls as unknown as [string, Record<string, unknown>][])[0]
   if (call === undefined) throw new Error('no interrogation was recorded')
-  return call
+  return { settingsNs: call[0], ...call[1] }
 }
 
 /** The settings write one card produced, as the scripted face recorded it. */
 interface MutateCall {
   ns: string
-  expectedRevision?: number
+  expectedRevision?: number | undefined
   ops: { op: string; path: string[]; value?: unknown }[]
 }
 
 /** The first recorded settings write; fails the case when nothing was written. */
 function firstMutate(mutate: ReturnType<typeof vi.fn>): MutateCall {
-  const call = mutate.mock.calls[0]?.[0] as MutateCall | undefined
+  const call = (mutate.mock.calls as unknown as [string, { op: string; path: string[]; value?: unknown }[], number | undefined][])[0]
   if (call === undefined) throw new Error('no settings write was recorded')
-  return call
+  return { ns: call[0], ops: call[1], expectedRevision: call[2] }
 }
 
 function mountCard(
   overrides: Partial<Parameters<typeof OllamaQuickAddCard>[0]> = {},
-  wire: Parameters<typeof scriptedFace>[0] = {},
+  wire: Parameters<typeof scriptedOperations>[0] = {},
 ) {
-  const scripted = scriptedFace(wire)
+  const scripted = scriptedOperations(wire)
   const onClose = vi.fn()
   render(
     <OllamaQuickAddCard
       taken={[]}
       revision={7}
-      api={scripted.face as never}
+      operations={scripted.operations}
       t={t}
       readOnly={false}
       onClose={onClose}
@@ -83,7 +80,7 @@ function buttonNamed(label: string): HTMLButtonElement {
 
 describe('local mode', () => {
   it('auto-detects installed models on mount, with no key field at all', async () => {
-    const discover = vi.fn(() => Promise.resolve(ok({ models: [{ id: 'llama3' }, { id: 'qwen3', contextWindow: 32_768 }] })))
+    const discover = vi.fn(() => Promise.resolve({ kind: 'found' as const, models: [{ id: 'llama3' }, { id: 'qwen3', contextWindow: 32_768 }] }))
     mountCard({}, { discover })
 
     await waitFor(() => { expect(discover).toHaveBeenCalled() })
@@ -98,7 +95,7 @@ describe('local mode', () => {
   })
 
   it('shows an inline hint when no local server answers, and the manual retry still works', async () => {
-    const discover = vi.fn(() => Promise.reject(new Error('fetch failed')))
+    const discover = vi.fn(() => Promise.resolve({ kind: 'refused' as const, message: 'fetch failed' }))
     const { discover: sameDiscover } = mountCard({}, { discover })
 
     await waitFor(() => { expect(screen.getByText(new RegExp(en.ollamaDetectFailed))).toBeTruthy() })
@@ -108,7 +105,7 @@ describe('local mode', () => {
   })
 
   it('creates a keyless profile with a placeholder auth header, and never writes a credential', async () => {
-    const discover = vi.fn(() => Promise.resolve(ok({ models: [{ id: 'llama3' }] })))
+    const discover = vi.fn(() => Promise.resolve({ kind: 'found' as const, models: [{ id: 'llama3' }] }))
     const { mutate, set, onClose } = mountCard({}, { discover })
 
     await screen.findByDisplayValue('llama3')
@@ -168,7 +165,7 @@ describe('cloud mode', () => {
       baseURL: 'https://ollama.com/v1',
       models: [{ id: 'gpt-oss' }],
     })
-    expect(set).toHaveBeenCalledWith({ ref: 'OLLAMA_CLOUD_API_KEY', value: 'sk-cloud' })
+    expect(set).toHaveBeenCalledWith('OLLAMA_CLOUD_API_KEY', 'sk-cloud')
   })
 })
 
@@ -194,7 +191,7 @@ describe('mode toggle', () => {
 
 describe('route validation', () => {
   it('blocks creation when the route id is already taken', async () => {
-    const discover = vi.fn(() => Promise.resolve(ok({ models: [{ id: 'llama3' }] })))
+    const discover = vi.fn(() => Promise.resolve({ kind: 'found' as const, models: [{ id: 'llama3' }] }))
     const { mutate } = mountCard({ taken: ['ollama'] }, { discover })
 
     await screen.findByDisplayValue('llama3')

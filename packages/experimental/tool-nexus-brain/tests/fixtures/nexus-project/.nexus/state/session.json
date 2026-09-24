@@ -1,8 +1,8 @@
 {
   "$schema": "https://nexus-framework.dev/schemas/session.json",
-  "token": "NX-WAKE-TS9V-2026-08-22",
-  "issued_at": "2026-08-22T17:00:30.721Z",
-  "brain_hash": "brain-2026-08-22-56d1073",
+  "token": "NX-WAKE-3PVG-2026-09-24",
+  "issued_at": "2026-09-24T09:14:42.866Z",
+  "brain_hash": "brain-2026-09-24-da52964",
   "brain_hash_inputs": [
     "docs/index.md",
     "docs/knowledge.md",

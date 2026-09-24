@@ -6,10 +6,10 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import { Context } from '@deepseek-ai/cordis'
+import { Context, FiberState } from '@deepseek-ai/cordis'
 import Loader from '@deepseek-ai/cordis-plugin-loader'
 import Include from '@deepseek-ai/cordis-plugin-include'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import * as ToolNexusBrain from '../src/index.ts'
@@ -80,7 +80,7 @@ describe('tool-nexus-brain real Loader composition through cordis.yml', () => {
 
     const result = await ctx.tools.execute({
       signal: new AbortController().signal,
-      callId: CallId('loader-wake-1'),
+      callId: ToolCallId('loader-wake-1'),
       name: 'nexus_wake',
       arguments: {},
     })
@@ -93,7 +93,10 @@ describe('tool-nexus-brain real Loader composition through cordis.yml', () => {
   it('fails loading when projectRoot has no .nexus/ directory', async () => {
     const bare = await mkdtemp(join(tmpdir(), 'dsh-nexus-brain-bare-'))
     try {
-      await expect(boot(bare)).rejects.toThrow(/No \.nexus\/ directory found/)
+      const ctx = await boot(bare)
+      const entry = [...ctx.loader.entries()].find(item => item.options.name === '@deepseek-ai/dsh-experimental-tool-nexus-brain')
+      expect(entry?.fiber?.state).toBe(FiberState.FAILED)
+      await expect(entry?.fiber?.await()).rejects.toThrow(/No \.nexus\/ directory found/)
     } finally {
       await rm(bare, { recursive: true, force: true })
     }

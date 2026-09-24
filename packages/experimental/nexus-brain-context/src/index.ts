@@ -11,7 +11,14 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { UserMessage } from '@deepseek-ai/dsh-llm'
+import type { ContextFormed, UserMessage } from '@deepseek-ai/dsh-llm'
+
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    'nexus-brain-context': { kind: 'nexus-brain-context'; plugin: string } & ContextFormed
+  }
+}
+
 import {
   getContextTool,
   resolveBrainContext,
@@ -47,7 +54,7 @@ export const Config: z<Config> = z.object({
 
 /** Find the current turn's start index in the session log, or -1 if unlogged (e.g. the very first turn). */
 function turnStartIndex(agent: Agent, turn: number): number {
-  return agent.session.events.findLastIndex(
+  return agent.session.snapshotEvents().findLastIndex(
     event => event.type === 'turn/start' && event.data.turn === turn,
   )
 }
@@ -66,7 +73,7 @@ function deriveTask(agent: Agent, turn: number, proposed: readonly UserMessage[]
   const start = turnStartIndex(agent, turn)
   const logged = start < 0
     ? []
-    : agent.session.events.slice(start + 1)
+    : agent.session.snapshotEvents().slice(start + 1)
       .flatMap(event => event.type === 'user/message' ? [event.data] : [])
   const texts = [...logged, ...proposed]
     .flatMap(message => message.content)
@@ -137,7 +144,7 @@ export function apply(ctx: Context, config: Config): void {
         ...decision.messages,
         createUserMessage({
           content: [{ type: 'text', text }],
-          source: { kind: 'plugin', plugin: name, form: 'snapshot', sections: [{ name, text }] },
+          source: { kind: 'nexus-brain-context', plugin: name, form: 'snapshot', sections: [{ name, text }] },
         }),
       ],
     }

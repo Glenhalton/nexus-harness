@@ -7,7 +7,7 @@
  */
 import clsx from 'clsx'
 import {
-  IconDarkOutline16, IconFollowsystemOutline16, IconLightOutline16, IconSparkle16,
+  IconDarkOutlineMedium, IconFollowsystemOutlineMedium, IconLightOutlineMedium, IconSparkleMedium,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { PropsLocale, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ThemePreference } from '../theme-settings.ts'
@@ -34,11 +34,11 @@ export type AppearanceRowComponentProps =
  * composition-swappable brand occupant, and this row must keep working
  * regardless of which brand package (or none) a deployment mounts.
  */
-const CUBES: readonly { id: ThemePreference; labelKey: ThemeKey; Icon: typeof IconLightOutline16 }[] = [
-  { id: 'light', labelKey: 'appearance.light', Icon: IconLightOutline16 },
-  { id: 'dark', labelKey: 'appearance.dark', Icon: IconDarkOutline16 },
-  { id: 'nexus', labelKey: 'appearance.nexus', Icon: IconSparkle16 },
-  { id: 'system', labelKey: 'appearance.system', Icon: IconFollowsystemOutline16 },
+const CUBES: readonly { id: ThemePreference; labelKey: ThemeKey; Icon: typeof IconLightOutlineMedium }[] = [
+  { id: 'light', labelKey: 'appearance.light', Icon: IconLightOutlineMedium },
+  { id: 'dark', labelKey: 'appearance.dark', Icon: IconDarkOutlineMedium },
+  { id: 'nexus', labelKey: 'appearance.nexus', Icon: IconSparkleMedium },
+  { id: 'system', labelKey: 'appearance.system', Icon: IconFollowsystemOutlineMedium },
 ]
 
 /**

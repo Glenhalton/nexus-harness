@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
-import { CallId } from '@deepseek-ai/dsh-llm'
+import { ToolCallId } from '@deepseek-ai/dsh-llm'
 import ToolRuntime from '@deepseek-ai/dsh-tools'
 import SystemPrompt from '@deepseek-ai/dsh-system-prompt'
 import * as ToolNexusBrain from '../src/index.ts'
@@ -64,7 +64,7 @@ describe('tool-nexus-brain coverage sweep', () => {
 
       const result = await ctx.tools.execute({
         signal: new AbortController().signal,
-        callId: CallId(`sweep-${name}`),
+        callId: ToolCallId(`sweep-${name}`),
         name,
         arguments: args,
       })

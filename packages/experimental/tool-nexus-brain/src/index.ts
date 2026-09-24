@@ -13,7 +13,7 @@
 
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
-import type { JsonValue } from '@deepseek-ai/dsh-session'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import {
   addKnowledgeEntryTool,
@@ -312,6 +312,9 @@ export function apply(ctx: Context, config: Config): void {
       render: (_args, value) => [{ type: 'text', text: `Added knowledge entry: ${value.heading}` }],
     },
     presentCall: args => ({ card: 'generic', title: 'NEXUS: add knowledge entry', kind: 'other', rawInput: args }),
-    execute: args => addKnowledgeEntryTool(brainCtx, args),
+    execute: async (args) => {
+      const res = await addKnowledgeEntryTool(brainCtx, args)
+      return { heading: res.heading ?? '', appended: true as const }
+    },
   }))
 }
