@@ -426,6 +426,7 @@
     { "path": "./packages/webhook/webhook-github" },
     { "path": "./packages/todo/tool-todo" },
     { "path": "./packages/plan/plan-mode" },
+    { "path": "./packages/plan/grill-mode" },
     { "path": "./packages/preset/agent-preset-registry" },
     { "path": "./packages/preset/agent-preset" },
     { "path": "./packages/preset/persona" },

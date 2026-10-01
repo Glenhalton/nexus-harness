@@ -9,7 +9,9 @@ English | [中文](README.zh.md)
 
 ## Summary
 
-The `plan/` group provides plan mode: while it is active, the agent explores and designs before executing, guided by instructions the deployment writes, and presents the finished plan for your approval before carrying it out. You can enter and leave plan mode with the `/plan` command and approve the plan or send the agent back to keep planning. Plan mode guides rather than restricts: every tool stays available, and limits such as sandbox mode and approval prompts are configured separately. The group contains one package, `plan-mode`.
+The `plan/` group provides collaboration modes for planning and alignment:
+- `plan-mode`: guides the agent to explore and design before executing, presenting the finished plan for user approval.
+- `grill-mode`: guides the agent through the structured grilling interview discipline to resolve design decisions and open branches before implementation.
 
 ## Table of Contents
 
@@ -22,11 +24,12 @@ The `plan/` group provides plan mode: while it is active, the agent explores and
 <a id="packages"></a>
 ## Packages
 
-One package provides the whole plan-mode feature; the subsystem reference owns the exhaustive contracts.
+The plan group contains packages for design exploration and alignment interviewing:
 
 | Package | Role | ctx key |
 |---|---|---|
 | [`plan-mode/`](plan-mode/README.md) | Provides plan mode: `/plan` enters and leaves it, deployment guidance steers the agent while planning, and `exit_plan_mode` presents the finished plan for your review | `ctx.planMode` |
+| [`grill-mode/`](grill-mode/README.md) | Provides grilling mode: `/grill` enters and leaves it, alignment interview guidance steers the agent, and `finish_grilling` presents the resolved alignment record for review | `ctx.grillMode` |
 
 -----
 
