@@ -211,7 +211,7 @@ child.on('exit', (code, signal) => {
   const dependencies = collectExternalDependencies()
   const packageJson = {
     name: '@nexus-framework/harness',
-    version: '1.6.0',
+    version: '1.0.0',
     description: 'NEXUS Harness: AI-Native Execution Harness and Web Interface (Proprietary / All Rights Reserved)',
     publishConfig: {
       access: 'public',
