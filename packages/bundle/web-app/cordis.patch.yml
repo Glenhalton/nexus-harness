@@ -293,6 +293,10 @@
     - id: ui-brand-nexus
       name: '@deepseek-ai/dsh-client-ui-brand-nexus'
 
+    # Nexus Brain & Context Indicators (header chip, right sidebar plan tab)
+    - id: ui-nexus-brain-indicator
+      name: '@deepseek-ai/dsh-client-ui-nexus-brain-indicator'
+
     - id: ui-attachment
       name: '@deepseek-ai/dsh-client-ui-attachment'
 

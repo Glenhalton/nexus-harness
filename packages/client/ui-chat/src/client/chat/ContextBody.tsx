@@ -9,6 +9,7 @@ import { JsonBlock } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ChatViewSlotProps } from '../contract/slots.ts'
 import type { ContextMessageNode } from '../contract/snapshot.ts'
 import type { KnownContextForm } from '@deepseek-ai/dsh-client-ui-conversation/client'
+import { NexusBrainGroundingBody, type NexusComposedContext } from './NexusBrainGrounding.tsx'
 import css from './ContextBody.module.css'
 
 /** Model-facing text stays bounded at the disclosure, not at the producer. */
@@ -553,6 +554,39 @@ export function contextBody(
   props: { content: ContextMessageNode['content']; source: unknown; t: Translate },
 ): { rendered: KnownContextForm | null; summary: string | null; body: ReactNode } {
   const opaque = { rendered: null, summary: null, body: <OpaqueBody {...props} /> }
+
+  const record = asRecord(props.source)
+  if (record?.['kind'] === 'nexus-brain-context') {
+    let rawText = ''
+    const sections = record['sections']
+    if (Array.isArray(sections) && sections.length > 0 && typeof (sections[0] as Record<string, unknown> | undefined)?.['text'] === 'string') {
+      rawText = (sections[0] as { text: string }).text
+    } else {
+      for (const block of props.content) {
+        if (block.type === 'text') rawText += block.text
+      }
+    }
+    const openBrace = rawText.indexOf('{')
+    const closeBrace = rawText.lastIndexOf('}')
+    if (openBrace >= 0 && closeBrace > openBrace) {
+      try {
+        const parsed = JSON.parse(rawText.slice(openBrace, closeBrace + 1)) as NexusComposedContext
+        if (typeof parsed === 'object' && parsed !== null && 'task' in parsed) {
+          const skillsCount = parsed.skills?.length ?? 0
+          const knowledgeCount = parsed.knowledge?.length ?? 0
+          const summary = `${skillsCount} skill${skillsCount === 1 ? '' : 's'}, ${knowledgeCount} knowledge`
+          return {
+            rendered: 'snapshot',
+            summary,
+            body: <NexusBrainGroundingBody composed={parsed} rawText={rawText} t={props.t} />,
+          }
+        }
+      } catch {
+        // Fall back to default form handling below
+      }
+    }
+  }
+
   switch (form) {
     case 'instructions':
       return instructionChanges(props.source) === null

@@ -34,14 +34,18 @@ export function ContextInjectionRow({ content, source, producer, form, t }: Cont
   // the opaque body, and the marker must say what the row actually shows.
   const { rendered, summary, body } = contextBody(form, { content, source, t })
 
+  const isNexusBrain = producer.label === 'Nexus Brain'
+
   return (
     <DisclosureRow
       className={css.root}
       icon={producer.role === 'recall'
         ? <span data-context-recall-icon><ReferenceIconRegular kind="session" /></span>
-        : <IconContextInjectionOutlineRegular size={14} />}
+        : isNexusBrain
+          ? <span data-context-nexus-brain-icon style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: 13 }}>🧠</span>
+          : <IconContextInjectionOutlineRegular size={14} />}
       chevronClassName={css.chevron}
-      title={t(producer.role === 'recall' ? 'message.contextRecall' : 'message.contextInjection')}
+      title={isNexusBrain ? 'Grounded by Nexus' : t(producer.role === 'recall' ? 'message.contextRecall' : 'message.contextInjection')}
       collapsedContent={producer.label === null ? undefined : (
         /* ToolRow's separator shape: an aria-hidden dot, so the accessible name
            stays the two readable parts and the two disclosure rows expose one

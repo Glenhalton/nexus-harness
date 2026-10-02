@@ -68,6 +68,8 @@ export function contextProducer(source: unknown): ContextProducerView {
       return { role: 'inject', label: joined(collect(record, 'changes', 'path')) ?? kind }
     case 'skill-invocation':
       return { role: 'inject', label: readString(record, 'name') ?? kind }
+    case 'nexus-brain-context':
+      return { role: 'inject', label: 'Nexus Brain' }
     default:
       // MessageSourceMap is merge-extensible; keep an unknown producer
       // visible by its durable kind.
