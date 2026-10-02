@@ -1,7 +1,7 @@
 {
-  "name": "@deepseek-ai/dsh-root",
-  "version": "0.1.7-rc.1",
-  "license": "MIT",
+  "name": "@nexus-framework/harness",
+  "version": "1.0.0",
+  "license": "UNLICENSED",
   "private": true,
   "type": "module",
   "engines": {

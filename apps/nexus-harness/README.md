@@ -40,4 +40,4 @@ npx -y @nexus-framework/harness verify ollama-local
 
 ## License
 
-MIT © GDA Africa & NEXUS Framework Contributors
+Proprietary © GDA Africa & NEXUS Framework Contributors. All rights reserved.

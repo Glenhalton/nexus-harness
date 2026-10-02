@@ -7,6 +7,7 @@
  */
 
 import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, chmodSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -106,6 +107,54 @@ export function packageHarness(): void {
   cpSync(join(REPO_ROOT, 'tsconfig.json'), join(RUNTIME_DIR, 'tsconfig.json'))
   cpSync(join(REPO_ROOT, 'tsconfig.base.json'), join(RUNTIME_DIR, 'tsconfig.base.json'))
 
+  // 5b. Minify & Obfuscate runtime source files
+  console.log('Minifying and obfuscating runtime files with esbuild...')
+  const esbuildCandidates = [
+    join(REPO_ROOT, 'node_modules', '.pnpm', 'esbuild@0.28.1', 'node_modules', 'esbuild', 'lib', 'main.js'),
+    join(REPO_ROOT, 'node_modules', 'esbuild', 'lib', 'main.js'),
+  ]
+  let esbuild: { transformSync: (code: string, options: Record<string, unknown>) => { code: string } } | null = null
+  const localReq = createRequire(import.meta.url)
+  for (const candidate of esbuildCandidates) {
+    if (existsSync(candidate)) {
+      try {
+        esbuild = localReq(candidate)
+        break
+      } catch {}
+    }
+  }
+
+  if (esbuild) {
+    let obfuscatedCount = 0
+    const minifyWalk = (dir: string): void => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const full = join(dir, entry.name)
+        if (entry.isDirectory()) {
+          minifyWalk(full)
+        } else if (
+          (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx') || entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) &&
+          !entry.name.endsWith('.d.ts')
+        ) {
+          try {
+            const raw = readFileSync(full, 'utf8')
+            const loader = entry.name.endsWith('.tsx') ? 'tsx' : entry.name.endsWith('.js') || entry.name.endsWith('.mjs') ? 'js' : 'ts'
+            const transformed = esbuild.transformSync(raw, {
+              loader,
+              minify: true,
+              legalComments: 'none',
+              target: 'es2024',
+              format: 'esm',
+            })
+            writeFileSync(full, transformed.code, 'utf8')
+            obfuscatedCount++
+          } catch {}
+        }
+      }
+    }
+    minifyWalk(RUNTIME_DIR)
+    console.log(`✅ Obfuscated and minified ${obfuscatedCount} runtime source files.`)
+  }
+
   // 6. Write bin/nexus-harness.js
   const binDir = join(PKG_DIR, 'bin')
   mkdirSync(binDir, { recursive: true })
@@ -163,7 +212,7 @@ child.on('exit', (code, signal) => {
   const packageJson = {
     name: '@nexus-framework/harness',
     version: '1.6.0',
-    description: 'NEXUS Harness: AI-Native Execution Harness and Web Interface',
+    description: 'NEXUS Harness: AI-Native Execution Harness and Web Interface (Proprietary / All Rights Reserved)',
     publishConfig: {
       access: 'public',
     },
@@ -191,7 +240,7 @@ child.on('exit', (code, signal) => {
       'agent',
       'autonomous-development',
     ],
-    license: 'MIT',
+    license: 'UNLICENSED',
     engines: {
       node: '>=20.0.0',
     },
@@ -243,7 +292,7 @@ npx -y @nexus-framework/harness verify ollama-local
 
 ## License
 
-MIT © GDA Africa & NEXUS Framework Contributors
+Proprietary © GDA Africa & NEXUS Framework Contributors. All rights reserved.
 `
   writeFileSync(join(PKG_DIR, 'README.md'), readmeContent, 'utf8')
 

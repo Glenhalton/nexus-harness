@@ -1,7 +1,7 @@
 {
   "name": "@nexus-framework/harness",
   "version": "1.6.0",
-  "description": "NEXUS Harness: AI-Native Execution Harness and Web Interface",
+  "description": "NEXUS Harness: AI-Native Execution Harness and Web Interface (Proprietary / All Rights Reserved)",
   "publishConfig": {
     "access": "public"
   },
@@ -29,7 +29,7 @@
     "agent",
     "autonomous-development"
   ],
-  "license": "MIT",
+  "license": "UNLICENSED",
   "engines": {
     "node": ">=20.0.0"
   },
