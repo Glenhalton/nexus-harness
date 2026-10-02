@@ -12,6 +12,7 @@ type NexusBrandMarkProps = HeroBrandMarkOwnerProps & SidebarBrandMarkOwnerProps
 
 /**
  * Render the Nexus mark with the presentation requested by its host surface.
+ * Precision vector geometry with nexus network vertices and currentColor support.
  * @param props - Host-supplied mark presentation.
  * @returns the Nexus hex-node mark.
  */
@@ -23,21 +24,34 @@ export function NexusBrandMark({ size, className }: NexusBrandMarkProps) {
       className={className}
       viewBox="0 0 24 24"
       fill="none"
+      xmlns="http://www.w3.org/2000/svg"
       aria-hidden="true"
     >
+      <defs>
+        <linearGradient id="nexus-mark-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="var(--dsw-alias-brand-primary, #34d399)" />
+          <stop offset="100%" stopColor="#10b981" />
+        </linearGradient>
+      </defs>
+      {/* Outer Hexagonal Structure */}
       <path
-        d="M12 1.6 21 6.8V17.2L12 22.4 3 17.2V6.8Z"
+        d="M12 2.2L20.5 7.1V16.9L12 21.8L3.5 16.9V7.1L12 2.2Z"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.75"
         strokeLinejoin="round"
       />
+      {/* Interconnected Neural Core Vector Matrix */}
       <path
-        d="M8.4 8V16M15.6 8V16M8.4 8L15.6 16"
+        d="M8 7.5V16.5M16 7.5V16.5M8 7.5L16 16.5"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.75"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      {/* Hub Vertices with dynamic glowing accents */}
+      <circle cx="8" cy="7.5" r="1.25" fill="var(--dsw-alias-brand-primary, currentColor)" />
+      <circle cx="16" cy="16.5" r="1.25" fill="var(--dsw-alias-brand-primary, currentColor)" />
+      <circle cx="12" cy="12" r="1.4" fill="url(#nexus-mark-glow)" />
     </svg>
   )
 }

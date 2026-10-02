@@ -22,15 +22,24 @@ const make = (host = stubConfigForm<ThemeSettings>()): {
 }
 
 describe('ThemeRuntime', () => {
-  it('defaults to the system preference resolved against prefers-color-scheme', () => {
+  it('defaults to the nexus preference', () => {
     const { theme } = make()
     const snapshot = theme.getTheme()
-    expect(snapshot.preference).toBe('system')
+    expect(snapshot.preference).toBe('nexus')
     expect(snapshot.fontSize).toBe(14)
+    expect(snapshot.active.id).toBe('nexus')
+    expect(snapshot.active.colorScheme).toBe('dark')
+    expect(snapshot.themes.map(t => t.id)).toEqual(['light', 'dark', 'nexus'])
+  })
+
+  it('system preference resolves against prefers-color-scheme', () => {
+    const { theme } = make()
+    theme.setTheme('system')
+    const snapshot = theme.getTheme()
+    expect(snapshot.preference).toBe('system')
     // jsdom matchMedia is absent; system resolves to light.
     expect(snapshot.active.id).toBe('light')
     expect(snapshot.active.colorScheme).toBe('light')
-    expect(snapshot.themes.map(t => t.id)).toEqual(['light', 'dark', 'nexus'])
   })
 
   it('seeds the initial font size from the boot-script body variable, ignoring junk', () => {
@@ -116,6 +125,7 @@ describe('ThemeRuntime', () => {
 
   it('the nexus built-in resolves dark with its accent tokens and persists through the scope', () => {
     const { theme, host } = make()
+    theme.setTheme('light')
     theme.setTheme('nexus')
     expect(theme.getTheme().active.colorScheme).toBe('dark')
     expect(theme.getTheme().active.tokens['--dsw-alias-brand-primary']).toBe('rgb(52, 211, 153)')
@@ -129,7 +139,7 @@ describe('ThemeRuntime', () => {
     theme.setTheme('sepia')
     expect(theme.getTheme().active.tokens['--dsw-alias-bg-base']).toBe('red')
     dispose()
-    expect(theme.getTheme().preference).toBe('system')
+    expect(theme.getTheme().preference).toBe('nexus')
     expect(theme.getTheme().themes.map(t => t.id)).toEqual(['light', 'dark', 'nexus'])
     // Custom ids are in-process extension themes; only the built-in product
     // preferences cross the Host settings schema.
@@ -159,6 +169,7 @@ describe('ThemeRuntime', () => {
 
   it('stacks reversible token overrides in call order and selects the active palette value', () => {
     const { theme } = make()
+    theme.setTheme('light')
     const firstTokens: ThemeTokenOverrides = {
       '--shared': { light: 'first-light', dark: 'first-dark' },
       '--first': { light: 'first-only-light', dark: 'first-only-dark' },
@@ -187,6 +198,7 @@ describe('ThemeRuntime', () => {
 
   it('replacing one source leaves its stale disposer harmless', () => {
     const { theme, events } = make()
+    theme.setTheme('light')
     const stale = theme.overrideTokens('package', {
       '--old': { light: 'old-light', dark: 'old-dark' },
     })
@@ -198,7 +210,7 @@ describe('ThemeRuntime', () => {
     current()
     current()
     expect(theme.getTheme().active.tokens).toEqual({})
-    expect(events).toHaveLength(3)
+    expect(events).toHaveLength(4)
   })
 
   it('exports sorted built-in, registered, and override-only token descriptions as copies', () => {
@@ -272,11 +284,12 @@ describe('ThemeRuntime', () => {
     it('system resolves against the media query and follows OS flips', () => {
       const media = stubMedia(true)
       const { theme, events } = make()
+      theme.setTheme('system')
       expect(theme.getTheme().preference).toBe('system')
       expect(theme.getTheme().active.id).toBe('dark')
       media.flip()
       expect(theme.getTheme().active.id).toBe('light')
-      expect(events).toHaveLength(1)
+      expect(events).toHaveLength(2)
     })
 
     it('OS flips do not republish while a concrete preference is set', () => {

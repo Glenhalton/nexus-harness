@@ -23,8 +23,8 @@ let observers: ResizeObserverStub[]
 class ResizeObserverStub {
   disconnected = false
   constructor(private callback: ResizeObserverCallback) { observers.push(this) }
-  observe(): void {}
-  unobserve(): void {}
+  observe(): void { }
+  unobserve(): void { }
   disconnect(): void { this.disconnected = true }
   fire(): void { this.callback([], this) }
 }
@@ -99,7 +99,7 @@ function mountFrame(windowWidth = frameWidth) {
       useSessionRetainInfo={() => undefined}
       useResource={useResource}
       useWorkspaces={sel => sel(workspaceState)}
-      t={key => key === 'brand.localBuild' ? 'DSH Local Build' : key}
+      t={key => key === 'brand.localBuild' ? 'Nexus Harness Local Build' : key}
     />
   )
   const utils = render(element())
@@ -185,7 +185,7 @@ afterEach(() => {
 describe('AppFrame', () => {
   it('localizes the product title without a configured build title', () => {
     mountFrame()
-    expect(document.title).toBe('DSH Local Build')
+    expect(document.title).toBe('Nexus Harness Local Build')
   })
 
   it('follows the selected durable Session title', () => {
@@ -298,7 +298,7 @@ describe('AppFrame', () => {
       expect(instance.getSnapshot().layoutInfo).toBe(layoutInfo)
       expect(tracks(frame)).toEqual([280, 0])
       expect(selectedSession).toBe(sessionId)
-      expect(document.title).toBe(panelId === null ? 'Session title — DSH Local Build' : 'DSH Local Build')
+      expect(document.title).toBe(panelId === null ? 'Session title — Nexus Harness Local Build' : 'Nexus Harness Local Build')
     }
   })
 })

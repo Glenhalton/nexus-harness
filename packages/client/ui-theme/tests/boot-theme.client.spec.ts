@@ -76,9 +76,21 @@ describe('theme bootstrap row', () => {
     )
   })
 
-  it('defaults to system and falls back to light when matchMedia is unavailable', () => {
+  it('colors the body with nexus dark canvas before script executes when preference is nexus', () => {
+    const [head] = bootThemeInjections('nexus')
+    if (head?.kind !== 'style') throw new Error('theme head bootstrap row is not a style')
+    expect(head.text).toBe(':root{color-scheme:dark}body{background-color:#0b0f15;--dsh-boot-bg:#0b0f15}')
+  })
+
+  it('defaults to nexus and resolves to dark scheme', () => {
     vi.stubGlobal('matchMedia', undefined)
     executeBootstrap()
+    expect(document.body.hasAttribute(DARK_ATTRIBUTE)).toBe(true)
+  })
+
+  it('system falls back to light when matchMedia is unavailable', () => {
+    vi.stubGlobal('matchMedia', undefined)
+    executeBootstrap('system')
     expect(document.body.hasAttribute(DARK_ATTRIBUTE)).toBe(false)
   })
 
