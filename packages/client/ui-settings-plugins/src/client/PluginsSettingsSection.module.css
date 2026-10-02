@@ -40,9 +40,12 @@
   cursor: pointer;
 }
 
-.tab:hover,
-.tab[data-active='true'] {
+.tab:hover {
   color: var(--dsw-alias-label-primary);
+}
+
+.tab[data-active='true'] {
+  color: var(--dsh-settings-nav-active-color, var(--dsw-alias-label-primary));
 }
 
 .tab[data-active='true']::after,
@@ -53,7 +56,7 @@
   left: 0;
   height: 2px;
   border-radius: 2px 2px 0 0;
-  background: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-brand-primary, var(--dsw-alias-label-primary));
   content: '';
 }
 

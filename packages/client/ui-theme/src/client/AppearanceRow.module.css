@@ -37,21 +37,22 @@
   padding: 20px 32px;
   border: 0.5px solid var(--dsw-alias-border-l4);
   border-radius: 20px;
-  background: transparent;
+  background: var(--dsh-settings-card-bg, transparent);
   font: inherit;
   font-size: 14px;
   line-height: 22px;
   color: var(--dsw-alias-label-primary);
   cursor: pointer;
+  transition: border-color 0.16s ease, background 0.16s ease;
 }
 
 .themeCube:hover:not(.selected) {
   background: var(--dsw-alias-interactive-bg-hover);
 }
 
-/* Selected cube: #F5F6F7 fill + #ADB2B8 border (static token — the bluish-400
- * step has no alias-layer name). */
+/* Selected cube: #F5F6F7 fill + #ADB2B8 border in default themes;
+ * active accent in nexus theme. */
 .selected {
-  background: var(--dsw-alias-bg-module-platform);
-  border-color: var(--dsw-static-neutral-bluish-400);
+  background: var(--dsh-active-selection-bg, var(--dsw-alias-bg-module-platform));
+  border-color: var(--dsh-active-selection-border, var(--dsw-static-neutral-bluish-400));
 }

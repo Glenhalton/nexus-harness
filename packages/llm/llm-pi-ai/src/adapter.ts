@@ -117,7 +117,7 @@ function profileOptions(
   reasoning: ModelThinkingLevel | undefined,
   apiKey: string | undefined,
 ): SimpleStreamOptions {
-  const enabledReasoning: ThinkingLevel | undefined = reasoning === 'off' ? undefined : reasoning
+  const enabledReasoning: ThinkingLevel | undefined = reasoning === 'off' ? undefined : (reasoning ?? 'medium')
   return {
     ...apiKey === undefined ? {} : { apiKey },
     ...enabledReasoning === undefined ? {} : { reasoning: enabledReasoning },

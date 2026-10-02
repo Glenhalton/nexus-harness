@@ -43,6 +43,16 @@ body {
      uses l2 today -- a shared token would subtly recolor it for every theme,
      not just nexus. */
   --dsh-frame-details-border: 1px solid var(--dsw-alias-border-l2);
+  /* Settings modal and sections theme tokens. Scheme-invariant no-op defaults:
+     light/dark/system render unchanged; only nexus overrides them. */
+  --dsh-settings-shadow: var(--dsw-elevation-prominent);
+  --dsh-settings-panel-radius: 32px;
+  --dsh-settings-card-bg: transparent;
+  --dsh-settings-nav-border: none;
+  --dsh-settings-nav-active-bg: var(--dsw-specific-sidebar-nav-item-active);
+  --dsh-settings-nav-active-color: var(--dsw-alias-label-primary);
+  --dsh-active-selection-border: var(--dsw-static-neutral-bluish-400);
+  --dsh-active-selection-bg: var(--dsw-alias-bg-module-platform);
   --dsw-menu-backdrop-filter: blur(40px) saturate(150%);
 }
 

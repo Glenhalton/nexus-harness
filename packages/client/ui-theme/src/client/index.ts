@@ -140,12 +140,18 @@ declare module '@deepseek-ai/cordis' {
  */
 const NEXUS_ACCENT_TOKENS: ThemeTokens = Object.freeze({
   '--dsw-alias-brand-primary': 'rgb(52, 211, 153)',
+  '--dsw-alias-brand-primary-new-colorprimary-new-color': 'rgb(52, 211, 153)',
   '--dsw-alias-button-primary-hover': 'rgb(28, 168, 122)',
   '--dsw-alias-button-info-fill': 'rgb(52, 211, 153)',
   '--dsw-alias-button-info-hover': 'rgb(28, 168, 122)',
   '--dsw-alias-state-business-primary': 'rgb(52, 211, 153)',
   '--dsw-alias-state-business-tertiary': 'rgba(52, 211, 153, 0.16)',
+  '--dsw-alias-link': 'rgb(52, 211, 153)',
   '--dsw-specific-sidebar-nav-item-active-accent': 'rgba(52, 211, 153, 0.14)',
+  '--dsh-settings-nav-active-bg': 'rgba(52, 211, 153, 0.14)',
+  '--dsh-settings-nav-active-color': 'rgb(52, 211, 153)',
+  '--dsh-active-selection-border': 'rgb(52, 211, 153)',
+  '--dsh-active-selection-bg': 'rgba(52, 211, 153, 0.12)',
 })
 
 /**
@@ -197,6 +203,12 @@ const NEXUS_GLASS_TOKENS: ThemeTokens = Object.freeze({
   '--dsw-specific-conversation-fill': 'rgba(18, 24, 31, 0.62)',
   '--dsw-specific-details-fill': 'rgba(18, 24, 31, 0.62)',
   '--dsw-specific-sidebar-fill': 'rgba(22, 28, 36, 0.68)',
+  '--dsw-specific-settings-fill': 'rgba(20, 26, 33, 0.78)',
+  '--dsh-settings-shadow': '0 16px 48px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08)',
+  '--dsh-settings-panel-radius': '24px',
+  '--dsh-settings-card-bg': 'rgba(255, 255, 255, 0.03)',
+  '--dsh-settings-nav-border': '1px solid rgba(255, 255, 255, 0.08)',
+  '--dsw-alias-bg-module-platform': 'rgba(255, 255, 255, 0.05)',
   '--dsw-specific-input-major': 'rgba(255, 255, 255, 0.06)',
   '--dsw-alias-border-l2-darkmode-thin': 'rgba(255, 255, 255, 0.16)',
 })

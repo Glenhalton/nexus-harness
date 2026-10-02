@@ -89,10 +89,11 @@
   width: 800px;
   height: min(800px, calc(100vh - 2 * max(24px, var(--dsh-frame-top-clearance, 24px))));
   max-width: calc(100vw - 48px);
-  border-radius: 32px;
+  border: var(--dsh-glass-border);
+  border-radius: var(--dsh-settings-panel-radius, 32px);
+  background: var(--dsw-specific-settings-fill, var(--dsw-alias-bg-layer-2));
   overflow: hidden;
-  background: var(--dsw-alias-bg-layer-2);
-  box-shadow: var(--dsw-elevation-prominent);
+  box-shadow: var(--dsh-settings-shadow, var(--dsw-elevation-prominent));
   /* Elevated surface: the scrollbar thumb takes the l2 elevation tokens.
      Declared on the panel rather than the scrolling `.options` child so the
      elevation choice sits with the surface; the custom properties inherit
@@ -112,6 +113,7 @@
   width: 188px;
   padding: 22px 12px 0;
   box-sizing: border-box;
+  border-right: var(--dsh-settings-nav-border, none);
 }
 
 /* Title row (figma 501:29959): 16/500 lh24, 12px side padding. */
@@ -150,6 +152,7 @@
   font-weight: 400;
   color: var(--dsw-alias-label-primary);
   text-align: left;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .navCell:hover {
@@ -157,7 +160,9 @@
 }
 
 .navCell.active {
-  background: var(--dsw-specific-sidebar-nav-item-active);
+  background: var(--dsh-settings-nav-active-bg, var(--dsw-specific-sidebar-nav-item-active));
+  color: var(--dsh-settings-nav-active-color, var(--dsw-alias-label-primary));
+  font-weight: 500;
 }
 
 .navIcon {
