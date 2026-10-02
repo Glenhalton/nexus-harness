@@ -8,11 +8,11 @@ export interface CleanedFailure {
   /** The human-readable message without JSON syntax or escaping. */
   clean: string
   /** Extracted HTTP/provider error code if present in the raw payload. */
-  extractedCode?: string | number
+  extractedCode?: string | number | undefined
   /** The original raw JSON string if unwrapping occurred, for expandable details. */
-  rawJson?: string
+  rawJson?: string | undefined
   /** Identified category of failure. */
-  category?: 'overloaded' | 'rate_limit' | 'stream_interrupted' | 'auth' | 'reasoning_required' | 'connection_refused' | 'context_length'
+  category?: 'overloaded' | 'rate_limit' | 'stream_interrupted' | 'auth' | 'reasoning_required' | 'connection_refused' | 'context_length' | undefined
 }
 
 /**
@@ -32,7 +32,7 @@ export function extractCleanErrorMessage(raw: string): CleanedFailure {
 
   // Detect HTTP status prefix like "400: { ... }" or "503: { ... }"
   const prefixMatch = text.match(/^(\d{3})\s*:\s*(\{.*\}|\[.*\])$/s)
-  if (prefixMatch) {
+  if (prefixMatch && prefixMatch[1] && prefixMatch[2]) {
     extractedCode = prefixMatch[1]
     text = prefixMatch[2].trim()
     wasJson = true
@@ -42,33 +42,51 @@ export function extractCleanErrorMessage(raw: string): CleanedFailure {
   for (let i = 0; i < 4; i++) {
     if ((text.startsWith('{') && text.endsWith('}')) || (text.startsWith('[') && text.endsWith(']'))) {
       try {
-        const parsed = JSON.parse(text)
+        const parsed: unknown = JSON.parse(text)
         wasJson = true
         if (typeof parsed === 'string') {
           text = parsed.trim()
           continue
         }
         if (parsed && typeof parsed === 'object') {
-          const rawCode = parsed.code ?? parsed.error?.code
-          if (rawCode !== undefined && (typeof rawCode === 'number' || typeof rawCode === 'string')) {
+          const obj = parsed as Record<string, unknown>
+          const errorObj = typeof obj['error'] === 'object' && obj['error'] !== null
+            ? (obj['error'] as Record<string, unknown>)
+            : undefined
+
+          const rawCode = (typeof obj['code'] === 'number' || typeof obj['code'] === 'string')
+            ? obj['code']
+            : (errorObj && (typeof errorObj['code'] === 'number' || typeof errorObj['code'] === 'string'))
+              ? errorObj['code']
+              : undefined
+
+          if (rawCode !== undefined) {
             extractedCode = rawCode
           }
-          const rawStatus = parsed.status ?? parsed.error?.status
-          if (rawStatus && typeof rawStatus === 'string' && !extractedCode) {
+
+          const rawStatus = typeof obj['status'] === 'string'
+            ? obj['status']
+            : (errorObj && typeof errorObj['status'] === 'string')
+              ? errorObj['status']
+              : undefined
+
+          if (rawStatus && !extractedCode) {
             extractedCode = rawStatus
           }
 
-          const nestedMsg =
-            parsed.error?.message ??
-            parsed.error?.msg ??
-            parsed.error?.detail ??
-            (typeof parsed.error === 'string' ? parsed.error : undefined) ??
-            parsed.message ??
-            parsed.msg ??
-            parsed.detail ??
-            parsed.description
+          const nestedCandidates = [
+            errorObj?.['message'],
+            errorObj?.['msg'],
+            errorObj?.['detail'],
+            typeof obj['error'] === 'string' ? obj['error'] : undefined,
+            obj['message'],
+            obj['msg'],
+            obj['detail'],
+            obj['description'],
+          ]
+          const nestedMsg = nestedCandidates.find((c): c is string => typeof c === 'string' && c.trim().length > 0)
 
-          if (typeof nestedMsg === 'string' && nestedMsg.trim()) {
+          if (nestedMsg) {
             text = nestedMsg.trim()
             continue
           }
@@ -181,10 +199,10 @@ export function categorizeFailure(
 export function formatFailureMessage(
   message: string,
   code: unknown,
-  t: (key: string) => string,
-): { display: string; extractedCode?: string | number; rawJson?: string; category?: CleanedFailure['category'] } {
+  t: (key: never) => string,
+): { display: string; extractedCode?: string | number | undefined; rawJson?: string | undefined; category?: CleanedFailure['category'] } {
   if (code === 'AUTH') {
-    return { display: t('message.failure.auth'), category: 'auth' }
+    return { display: t('message.failure.auth' as never), category: 'auth' }
   }
 
   const { clean, extractedCode, rawJson, category } = extractCleanErrorMessage(message)

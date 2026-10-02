@@ -501,6 +501,7 @@ describe('ModelsSection', () => {
     const row = (credential: ProviderRow['credential']): ProviderRow => ({
       entry,
       configured: true,
+      enabled: true,
       removable: false,
       apiKeyEnv: 'X',
       credential,
@@ -1838,7 +1839,7 @@ describe('ModelsSection', () => {
       return {
         ...ns,
         value: {
-          ...ns.value,
+          ...(ns.value as Record<string, unknown>),
           providers: {
             ...((ns.value as { providers?: Record<string, unknown> }).providers ?? {}),
             openai: {

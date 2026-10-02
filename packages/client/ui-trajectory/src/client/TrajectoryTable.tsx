@@ -743,26 +743,33 @@ function cleanJsonError(raw: string | undefined): string | undefined {
   if (!raw) return raw
   let text = raw.trim()
   const prefixMatch = text.match(/^(\d{3})\s*:\s*(\{.*\}|\[.*\])$/s)
-  if (prefixMatch) text = prefixMatch[2].trim()
+  if (prefixMatch && prefixMatch[2]) text = prefixMatch[2].trim()
   for (let i = 0; i < 4; i++) {
     if ((text.startsWith('{') && text.endsWith('}')) || (text.startsWith('[') && text.endsWith(']'))) {
       try {
-        const parsed = JSON.parse(text)
+        const parsed: unknown = JSON.parse(text)
         if (typeof parsed === 'string') {
           text = parsed.trim()
           continue
         }
         if (parsed && typeof parsed === 'object') {
-          const nestedMsg =
-            parsed.error?.message ??
-            parsed.error?.msg ??
-            parsed.error?.detail ??
-            (typeof parsed.error === 'string' ? parsed.error : undefined) ??
-            parsed.message ??
-            parsed.msg ??
-            parsed.detail ??
-            parsed.description
-          if (typeof nestedMsg === 'string' && nestedMsg.trim()) {
+          const obj = parsed as Record<string, unknown>
+          const errorObj = typeof obj['error'] === 'object' && obj['error'] !== null
+            ? (obj['error'] as Record<string, unknown>)
+            : undefined
+
+          const nestedCandidates = [
+            errorObj?.['message'],
+            errorObj?.['msg'],
+            errorObj?.['detail'],
+            typeof obj['error'] === 'string' ? obj['error'] : undefined,
+            obj['message'],
+            obj['msg'],
+            obj['detail'],
+            obj['description'],
+          ]
+          const nestedMsg = nestedCandidates.find((c): c is string => typeof c === 'string' && c.trim().length > 0)
+          if (nestedMsg) {
             text = nestedMsg.trim()
             continue
           }
