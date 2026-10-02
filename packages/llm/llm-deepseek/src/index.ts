@@ -3,7 +3,7 @@ import type {} from '@deepseek-ai/dsh-settings'
 import type {} from '@deepseek-ai/dsh-deepseek-account'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import type { Context } from '@deepseek-ai/cordis'
-import { assertUsableApiKey, LlmError, resolveImageAttachmentAccess } from '@deepseek-ai/dsh-llm'
+import { assertUsableApiKey, LlmError, resolveImageAttachmentAccess, type AdapterRegistrationHandle } from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-fs'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
@@ -111,26 +111,34 @@ export function apply(ctx: Context, config: Config): void {
   ])
   // Route effects bind to this apply fiber via the stable `ctx` reference,
   // even when a swap runs inside the scoped settings callback below.
-  const registration = ctx.llm.registerAdapter([PROVIDER], adapter)
-  let registeredPolicy = options().retryPolicy
+  let registration: AdapterRegistrationHandle | undefined
+  let registeredFacts: unknown
   const ensureRegistrationFacts = (): void => {
-    let policy: ResolvedDeepSeekOptions['retryPolicy']
+    let currentOptions: ResolvedDeepSeekOptions
     try {
-      policy = options().retryPolicy
+      currentOptions = options()
     } catch (error) {
       // A stored config the resolver refuses keeps the current registration; each request fails on its own resolve.
       ctx.logger.warn(error)
       return
     }
-    if (deepEqualJson(policy, registeredPolicy)) return
-    // The registry captures the retry policy at registration, so it is the one
-    // fact per-request resolution cannot refresh. `replace` re-reads it in one
-    // synchronous registry section: disposing and re-registering instead would
-    // publish an empty route set between the two, and an observer that reacted
-    // to it would see this provider disappear and come back.
-    registration.replace([PROVIDER])
-    registeredPolicy = policy
+    const enabled = currentOptions.enabled !== false
+    const facts = { enabled, retryPolicy: currentOptions.retryPolicy }
+    if (deepEqualJson(facts, registeredFacts)) return
+
+    const routes = enabled ? [PROVIDER] : []
+    if (registration === undefined) {
+      if (routes.length === 0) {
+        registeredFacts = facts
+        return
+      }
+      registration = ctx.llm.registerAdapter(routes, adapter)
+    } else {
+      registration.replace(routes)
+    }
+    registeredFacts = facts
   }
+  ensureRegistrationFacts()
 
   ctx.on('loader/volatile-update', ensureRegistrationFacts)
 }

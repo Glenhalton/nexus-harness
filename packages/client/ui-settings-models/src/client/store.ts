@@ -73,6 +73,8 @@ export interface ProviderRow {
   entry: ProviderDirectoryEntry
   /** Whether any layer configures this provider (its profile resolves). */
   configured: boolean
+  /** Whether the provider route is enabled (active for model routing). */
+  enabled: boolean
   /** Whether the user layer alone carries the profile (removal restores the base). */
   removable: boolean
   /** The credential reference the resolved profile names, when one does. */
@@ -204,10 +206,14 @@ export class ModelsSettingsStore {
         && entry.settingsPath.length > 0
         && this.schema.hasPath(namespace.user, entry.settingsPath)
         && !this.schema.hasPath(namespace.base, entry.settingsPath)
+      const enabled = namespace === undefined
+        ? true
+        : this.schema.getPath(namespace.value, [...entry.settingsPath, 'enabled']) !== false
       return {
         entry,
         configured,
         removable,
+        enabled,
         apiKeyEnv: apiKeyEnvOf(namespace, entry.settingsPath, this.schema),
         credential: undefined,
       }
@@ -263,6 +269,7 @@ export class ModelsSettingsStore {
  * @returns whether the user already has this provider to talk to.
  */
 export function providerUsable(row: ProviderRow): boolean {
+  if (row.enabled === false) return false
   if (!row.entry.active) return false
   if (row.apiKeyEnv === undefined) return true
   return row.credential?.configured === true

@@ -312,4 +312,16 @@ describe('request-level dynamic configuration', () => {
     await expect(boot(dir, { baseURL: 'http://127.0.0.1:1', protocol })).rejects.toThrow(/protocol/)
   })
 
+  it('excludes disabled provider from routing while keeping it configured', async () => {
+    const dir = await home()
+    const { ctx } = await boot(dir, { enabled: false })
+    expect(ctx.llm.listProviders().map(p => p.id)).toEqual([])
+    expect(ctx.llm.listConfigurableProviders().map(p => p.provider)).toContain('deepseek-official')
+
+    await configurations.get(ctx)!.update({ enabled: true })
+    expect(ctx.llm.listProviders().map(p => p.id)).toEqual(['deepseek-official'])
+
+    await configurations.get(ctx)!.update({ enabled: false })
+    expect(ctx.llm.listProviders().map(p => p.id)).toEqual([])
+  })
 })

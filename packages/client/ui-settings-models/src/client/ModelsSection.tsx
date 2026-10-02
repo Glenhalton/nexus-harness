@@ -23,7 +23,7 @@
 
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Button, IconPlusOutlineRegular, Modal, SegmentedControl } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, IconPlusOutlineRegular, Modal, SegmentedControl, Switch } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { InjectFace, PropsRenderSlots } from '@deepseek-ai/dsh-client-ui-slots'
 import type { SettingsNamespaceView } from '@deepseek-ai/dsh-api-remotes/client'
 // Type-only: pulls this package's SlotMap merge (the two Models child slots).
@@ -247,6 +247,34 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
   const [deleteFailure, setDeleteFailure] = useState<string | undefined>(undefined)
   const [savedTarget, setSavedTarget] = useState<ProviderIdentity | undefined>(undefined)
   const [dismissedSetup, setDismissedSetup] = useState<ReadonlySet<string>>(() => new Set())
+  const [toggling, setToggling] = useState<ReadonlySet<string>>(() => new Set())
+  const [toggleFailure, setToggleFailure] = useState<{ provider: string; message: string } | undefined>(undefined)
+
+  const handleToggle = (target: EditorTarget, nextEnabled: boolean): void => {
+    /* v8 ignore next -- switch disabled while busy or read-only */
+    if (!state.writable || toggling.has(target.provider)) return
+    setToggling(previous => new Set([...previous, target.provider]))
+    setToggleFailure(undefined)
+    void operations.writeSettings(
+      target.settingsNs,
+      [{ op: 'set', path: [...target.settingsPath, 'enabled'], value: nextEnabled }],
+      undefined,
+    ).then((result) => {
+      if (result.kind !== 'written') {
+        setToggleFailure({ provider: target.provider, message: result.message })
+        return
+      }
+      void controller.load()
+    }).catch((err) => {
+      setToggleFailure({ provider: target.provider, message: err instanceof Error ? err.message : String(err) })
+    }).finally(() => {
+      setToggling((previous) => {
+        const next = new Set(previous)
+        next.delete(target.provider)
+        return next
+      })
+    })
+  }
 
   const announceSaved = (target: ProviderIdentity): void => {
     // Announced only once the refreshed directory is in the snapshot the
@@ -432,7 +460,7 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
             && row.apiKeyEnv !== undefined
             && row.credential?.configured === false
           return (
-            <li key={row.entry.provider} className={styles['rowCard']}>
+            <li key={row.entry.provider} className={`${styles['rowCard']}${row.enabled === false ? ` ${styles['rowCardDisabled']}` : ''}`}>
               <div className={styles['rowHead']}>
                 <span className={styles['rowIdentity']}>
                   <span className={styles['rowName']}>{row.entry.displayName}</span>
@@ -441,6 +469,9 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
                       follows its answer and stays off when it gives none. */}
                   {row.entry.declared === true
                     ? <span className={styles['rowTag']}>{t('customTag')}</span>
+                    : null}
+                  {row.enabled === false
+                    ? <span className={styles['rowDisabledTag']}>{t('providerDisabled')}</span>
                     : null}
                   {credentialConfigured
                     ? (
@@ -463,6 +494,17 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
                       : null}
                 </span>
                 <span className={styles['rowActions']}>
+                  {row.entry.settingsNs.length > 0
+                    ? (
+                      <Switch
+                        checked={row.enabled}
+                        disabled={!state.writable || toggling.has(target.provider)}
+                        label={providerCopy(t(row.enabled ? 'disableProvider' : 'enableProvider'), target)}
+                        title={providerCopy(t(row.enabled ? 'disableProvider' : 'enableProvider'), target)}
+                        onChange={(next) => { handleToggle(target, next) }}
+                      />
+                    )
+                    : null}
                   <button
                     type="button"
                     className={styles['secondaryButton']}
@@ -498,6 +540,9 @@ function Loaded({ injected, renderSlot }: { injected: ModelsSectionFace; renderS
                 </span>
               </div>
               {error}
+              {toggleFailure?.provider === target.provider
+                ? <p role="alert" className={styles['error']}>{toggleFailure.message}</p>
+                : null}
               {renderSlot(
                 'settings.models.provider-card',
                 { provider: row.entry, configured: row.configured, keyConfigured: keyConfiguredOf(row) },

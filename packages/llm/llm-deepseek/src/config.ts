@@ -26,6 +26,8 @@ const MODEL_MODALITIES = ['text', 'image'] as const satisfies readonly ModelModa
  * reasoning effort resolves to `high`.
  */
 export interface Config {
+  /** Whether this provider route is active and available for model routing (default true). */
+  enabled: Volatile<boolean>
   /** Credential reference (environment-variable name) resolved per request; defaults to `DEEPSEEK_API_KEY`. */
   apiKeyEnv: Volatile<string>
   /** Endpoint base; falls back to $DEEPSEEK_BASE_URL from a trusted environment layer, then the public API. */
@@ -90,6 +92,7 @@ const catalogModel: z<DeepSeekCatalogModel> = z.object({
 })
 
 export const Config = z.object({
+  enabled: z.boolean().default(true).volatile(),
   apiKeyEnv: z.string().role('credential-ref').default(DEFAULT_API_KEY_ENV).volatile(),
   baseURL: z.string().volatile(),
   thinking: z.union(['enabled', 'disabled']).volatile(),
@@ -302,6 +305,7 @@ export function resolveAdapterOptions(config: Options, environment?: LaunchEnvir
     throw new Error('llm-deepseek: Messages baseURL must be an HTTP(S) root without credentials, query, or fragment')
   }
   return {
+    enabled: config.enabled ?? true,
     apiKeyEnv: credentialRef(config.apiKeyEnv ?? DEFAULT_API_KEY_ENV),
     baseURL,
     defaults: {

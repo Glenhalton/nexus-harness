@@ -1817,6 +1817,55 @@ describe('ModelsSection', () => {
     expect(mutate).not.toHaveBeenCalled()
   })
 
+  it('toggles provider on and off via switch control', async () => {
+    const { mutate } = await mountSection()
+    const switchControl = screen.getByRole('switch', { name: openaiCopy(en.disableProvider) })
+    expect(switchControl.getAttribute('aria-checked')).toBe('true')
+
+    fireEvent.click(switchControl)
+    await waitFor(() => { expect(mutate).toHaveBeenCalledOnce() })
+    expect(mutate.mock.calls[0]).toEqual([
+      'llm-pi-ai',
+      [{ op: 'set', path: ['providers', 'openai', 'enabled'], value: false }],
+      undefined,
+    ])
+  })
+
+  it('renders disabled tag and allows re-enabling when provider is disabled', async () => {
+    const scripted = scriptedFace()
+    const namespaces = wireNamespaces().map((ns) => {
+      if (ns.ns !== 'llm-pi-ai') return ns
+      return {
+        ...ns,
+        value: {
+          ...ns.value,
+          providers: {
+            ...((ns.value as { providers?: Record<string, unknown> }).providers ?? {}),
+            openai: {
+              ...((ns.value as { providers?: Record<string, Record<string, unknown>> }).providers?.openai ?? {}),
+              enabled: false,
+            },
+          },
+        },
+      }
+    })
+    scripted.face.settings.describe.mockResolvedValue(remoteOk({
+      writable: true, hasDocument: true, namespaces,
+    }))
+    await mountFace(scripted)
+
+    expect(screen.getByText(en.providerDisabled)).toBeTruthy()
+    const switchControl = screen.getByRole('switch', { name: openaiCopy(en.enableProvider) })
+    expect(switchControl.getAttribute('aria-checked')).toBe('false')
+
+    fireEvent.click(switchControl)
+    await waitFor(() => { expect(scripted.mutate).toHaveBeenCalledOnce() })
+    expect(scripted.mutate.mock.calls[0]).toEqual([
+      'llm-pi-ai',
+      [{ op: 'set', path: ['providers', 'openai', 'enabled'], value: true }],
+      undefined,
+    ])
+  })
 })
 
 describe('apiKeyFailure', () => {

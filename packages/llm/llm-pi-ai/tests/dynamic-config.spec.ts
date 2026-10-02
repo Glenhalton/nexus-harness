@@ -309,4 +309,35 @@ describe('request-level dynamic profiles', () => {
     await configurations.get(ctx)!.update({ providers: { anthropic: {}, openai: {} } })
     expect(ctx.llm.listProviders().map(provider => provider.id)).toEqual(before)
   })
+
+  it('excludes disabled providers from routing while keeping them configured', async () => {
+    const dir = await home()
+    const ctx = await boot(dir, {
+      providers: {
+        openai: { enabled: true },
+        anthropic: { enabled: false },
+      },
+    })
+    expect(ctx.llm.listProviders().map(p => p.id)).toEqual(['openai'])
+    expect(ctx.llm.listConfigurableProviders().map(p => p.provider)).toContain('anthropic')
+    expect(ctx.llm.listConfigurableProviders().map(p => p.provider)).toContain('openai')
+
+    // Toggle anthropic on, openai off
+    await configurations.get(ctx)!.update({
+      providers: {
+        openai: { enabled: false },
+        anthropic: { enabled: true },
+      },
+    })
+    expect(ctx.llm.listProviders().map(p => p.id)).toEqual(['anthropic'])
+
+    // Toggle both off
+    await configurations.get(ctx)!.update({
+      providers: {
+        openai: { enabled: false },
+        anthropic: { enabled: false },
+      },
+    })
+    expect(ctx.llm.listProviders().map(p => p.id)).toEqual([])
+  })
 })

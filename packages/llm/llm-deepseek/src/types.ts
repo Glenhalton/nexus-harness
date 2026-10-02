@@ -43,6 +43,8 @@ export interface DeepSeekCatalogModel {
  * makes a configuration change reach the next request without re-registration.
  */
 export interface DeepSeekConnectionOptions {
+  /** Whether this provider route is active and available for model routing. */
+  enabled: boolean
   /** Messages API root; custom paths remain unchanged. */
   baseURL: string
   /**
