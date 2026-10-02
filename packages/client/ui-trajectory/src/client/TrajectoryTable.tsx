@@ -739,13 +739,50 @@ function statusLabel(state: RecordState, t: TrajectoryTranslate): string {
   return t('status.completed')
 }
 
+function cleanJsonError(raw: string | undefined): string | undefined {
+  if (!raw) return raw
+  let text = raw.trim()
+  const prefixMatch = text.match(/^(\d{3})\s*:\s*(\{.*\}|\[.*\])$/s)
+  if (prefixMatch) text = prefixMatch[2].trim()
+  for (let i = 0; i < 4; i++) {
+    if ((text.startsWith('{') && text.endsWith('}')) || (text.startsWith('[') && text.endsWith(']'))) {
+      try {
+        const parsed = JSON.parse(text)
+        if (typeof parsed === 'string') {
+          text = parsed.trim()
+          continue
+        }
+        if (parsed && typeof parsed === 'object') {
+          const nestedMsg =
+            parsed.error?.message ??
+            parsed.error?.msg ??
+            parsed.error?.detail ??
+            (typeof parsed.error === 'string' ? parsed.error : undefined) ??
+            parsed.message ??
+            parsed.msg ??
+            parsed.detail ??
+            parsed.description
+          if (typeof nestedMsg === 'string' && nestedMsg.trim()) {
+            text = nestedMsg.trim()
+            continue
+          }
+        }
+      } catch {
+        break
+      }
+    }
+    break
+  }
+  return text || raw
+}
+
 function requestErrorMessage(
   request: Pick<TrajectoryRequestNumber, 'error' | 'errorCode'>,
   t: TrajectoryTranslate,
 ): string | undefined {
   if (request.errorCode === 'AUTH') return t('details.failure.auth')
   if (request.error === COMPACTION_INTERRUPTED_ERROR) return t('layout.compactionInterrupted')
-  return request.error
+  return cleanJsonError(request.error)
 }
 
 function TokenRows({ cell, t }: { cell: TrajectoryCellProps; t: TrajectoryTranslate }) {

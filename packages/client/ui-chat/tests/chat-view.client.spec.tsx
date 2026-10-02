@@ -2122,6 +2122,25 @@ describe('ChatView', () => {
     ])
   })
 
+  it('unwraps JSON error payloads in terminal turn errors and provides raw details', () => {
+    const rawError = JSON.stringify({
+      error: {
+        message: 'This model is currently experiencing high demand. Please try again later.',
+        code: 503,
+      },
+    })
+    const errorNode: TurnErrorNode = {
+      kind: 'turn-error', seq: 2, time: 2_000, turn: 1, step: 0,
+      message: rawError,
+    }
+    const h = makeHarness({ nodes: [user(1, 'try'), errorNode] })
+    const view = render(<h.ChatView {...h.props} />)
+    const status = view.getByRole('status')
+    expect(status.textContent).toContain('This model is currently experiencing high demand. Please try again later.')
+    expect(status.textContent).toContain('503')
+    expect(within(status).getByText('原始错误详情')).toBeTruthy()
+  })
+
   it('renders the max-tokens notice with localized guidance, distinct from turn errors', () => {
     const h = makeHarness({ nodes: [user(1, 'try'), assistant(2, 'truncated'), turnMaxTokens(3)] })
     const view = render(<h.ChatView {...h.props} />)

@@ -308,6 +308,36 @@
   font: var(--dsw-font-markdown-code-block-small);
 }
 
+.failureRawDetails {
+  margin-top: 6px;
+  font-size: var(--dsh-content-font-size-small, 11px);
+}
+
+.failureRawSummary {
+  cursor: pointer;
+  color: var(--dsw-alias-label-tertiary);
+  user-select: none;
+  font-size: 11px;
+}
+
+.failureRawSummary:hover {
+  color: var(--dsw-alias-label-secondary);
+}
+
+.failureRawContent {
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--dsw-alias-bg-module-platform);
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  color: var(--dsw-alias-label-secondary);
+  font: var(--dsw-font-markdown-code-block-small);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
 .maxTokensTitle {
   margin-right: 6px;
   color: var(--dsw-alias-state-warn-primary);

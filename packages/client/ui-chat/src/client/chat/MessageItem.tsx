@@ -47,13 +47,7 @@ interface RetryCountdown {
   seconds: number
 }
 
-function failureMessage(
-  message: string,
-  code: unknown,
-  t: ChatViewSlotProps['t'],
-): string {
-  return code === 'AUTH' ? t('message.failure.auth') : message
-}
+import { formatFailureMessage } from './error-formatter.ts'
 
 function ModelRetryItem({ node, active, t }: {
   node: ModelRetryNode
@@ -99,6 +93,7 @@ function ModelRetryItem({ node, active, t }: {
         ? t('message.retry.started')
         : t('message.retry.scheduled')
   const seconds = active ? remainingSeconds : scheduledSeconds
+  const retryFailure = formatFailureMessage(node.failure.message, node.failure.code, t)
 
   return (
     <details className={css.retryRow} data-active={active || undefined}>
@@ -114,7 +109,13 @@ function ModelRetryItem({ node, active, t }: {
         </div>
         <div>
           <span className={css.retryDetailLabel}>{t('message.retry.failure')}</span>
-          {failureMessage(node.failure.message, node.failure.code, t)}
+          {retryFailure.display}
+          {retryFailure.rawJson && (
+            <details className={css.failureRawDetails}>
+              <summary className={css.failureRawSummary}>{t('message.failure.rawDetails')}</summary>
+              <pre className={css.failureRawContent}>{retryFailure.rawJson}</pre>
+            </details>
+          )}
         </div>
       </div>
     </details>
@@ -126,14 +127,23 @@ function TurnErrorItem({ node, t }: {
   node: TurnErrorNode
   t: ChatViewSlotProps['t']
 }) {
+  const failure = formatFailureMessage(node.message, node.code, t)
+  const code = node.code ?? failure.extractedCode
+
   return (
     <div className={css.turnErrorRow} role="status">
       <StateDot state="error" className={css.turnErrorDot} />
       <div className={css.turnErrorCopy}>
         <span className={css.turnErrorTitle}>{t('message.turnError')}</span>
-        <span className={css.turnErrorMessage}>{failureMessage(node.message, node.code, t)}</span>
+        <span className={css.turnErrorMessage}>{failure.display}</span>
+        {failure.rawJson && (
+          <details className={css.failureRawDetails}>
+            <summary className={css.failureRawSummary}>{t('message.failure.rawDetails')}</summary>
+            <pre className={css.failureRawContent}>{failure.rawJson}</pre>
+          </details>
+        )}
       </div>
-      {node.code !== undefined && <code className={css.turnErrorCode}>{node.code}</code>}
+      {code !== undefined && <code className={css.turnErrorCode}>{code}</code>}
     </div>
   )
 }
