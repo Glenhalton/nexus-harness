@@ -87,10 +87,11 @@
 
 ---
 
-## 10. Proprietary Self-Contained Distribution & Obfuscation
-* **The Problem in Upstream:** Distributed as raw open-source packages where competitors can easily repackage and resell without adding value.
+## 10. Self-Contained Packaging, Minification & Dual-License Structure
+* **The Problem in Upstream:** Distributed as raw monorepo packages requiring manual setup, while open-source modifications risk license ambiguity or trivial copy-pasting.
 * **Our Enhancement:**
-  - Packaged as a self-contained distribution (`@nexus-framework/harness`) with all 325 internal package dependencies materialized.
-  - **In-Memory Esbuild Obfuscation:** 5,100+ runtime files minified and mangled, comments stripped, and types compiled.
-  - Marked **`UNLICENSED` (All Rights Reserved)** to legally and technically safeguard intellectual property while retaining public developer accessibility via `npx`.
-* **Commercial Edge:** Fully proprietary intellectual property protection while preserving seamless one-command installation.
+  - **Self-Contained Standalone Packaging:** Packaged as `@nexus-framework/harness` with all 325 internal package dependencies materialized and external runtime dependencies resolved into a single distributable.
+  - **Code Minification & Variable Mangling:** 5,100+ runtime files processed with `esbuild` to strip internal comments, inline legal notices, and mangle local variable identifiers—significantly raising the friction against trivial casual inspection or copy-pasting.
+  - **Responsible Protection Claims:** Minification is a pragmatic friction layer rather than unbreakable encryption or DRM. True product defensibility stems from continuous ecosystem velocity, active plan synchronization, and deep platform integration.
+  - **Strict Legal & License Compliance:** Shipped under `SEE LICENSE IN LICENSE`. Fully preserves the original DeepSeek MIT copyright notice for all upstream base components, while reserving All Rights Reserved proprietary rights for NEXUS additions (custom themes, branding, launcher bindings, and brain-context plugins).
+* **Commercial Edge:** Professional, friction-reduced distribution that respects open-source licensing obligations while clearly asserting commercial ownership over proprietary additions.

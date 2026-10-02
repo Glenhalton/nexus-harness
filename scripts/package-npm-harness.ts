@@ -141,7 +141,7 @@ export function packageHarness(): void {
             const transformed = esbuild.transformSync(raw, {
               loader,
               minify: true,
-              legalComments: 'none',
+              legalComments: 'inline',
               target: 'es2024',
               format: 'esm',
             })
@@ -226,6 +226,7 @@ child.on('exit', (code, signal) => {
       'bin',
       'runtime',
       'README.md',
+      'LICENSE',
     ],
     repository: {
       type: 'git',
@@ -240,7 +241,7 @@ child.on('exit', (code, signal) => {
       'agent',
       'autonomous-development',
     ],
-    license: 'UNLICENSED',
+    license: 'SEE LICENSE IN LICENSE',
     engines: {
       node: '>=20.0.0',
     },
@@ -249,7 +250,44 @@ child.on('exit', (code, signal) => {
 
   writeFileSync(join(PKG_DIR, 'package.json'), `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8')
 
-  // 8. Write README.md
+  // 8. Write LICENSE
+  const licenseContent = `NEXUS Harness Distribution License
+==================================
+
+Copyright (c) 2026 Glenhalton Takor / GDA Africa. All Rights Reserved.
+Proprietary rights are reserved for all NEXUS-specific additions, modifications,
+branding assets, themes, CLI launcher bindings, and brain-context plugins.
+
+--------------------------------------------------------------------------------
+Portions of this software are derived from DeepSeek Harness (DSH), which is
+licensed under the MIT License:
+
+MIT License
+
+Copyright (c) 2026 DeepSeek
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+--------------------------------------------------------------------------------
+`
+  writeFileSync(join(PKG_DIR, 'LICENSE'), licenseContent, 'utf8')
+
+  // 9. Write README.md
   const readmeContent = `# @nexus-framework/harness
 
 > The official AI-Native Execution Harness and Web Interface for the NEXUS Framework.
@@ -292,7 +330,8 @@ npx -y @nexus-framework/harness verify ollama-local
 
 ## License
 
-Proprietary © GDA Africa & NEXUS Framework Contributors. All rights reserved.
+Proprietary additions and modifications © 2026 GDA Africa & NEXUS Framework Contributors. All rights reserved.
+Upstream components © 2026 DeepSeek under the MIT License. See [LICENSE](LICENSE) for full legal text and third-party notices.
 `
   writeFileSync(join(PKG_DIR, 'README.md'), readmeContent, 'utf8')
 

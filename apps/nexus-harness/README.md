@@ -40,4 +40,5 @@ npx -y @nexus-framework/harness verify ollama-local
 
 ## License
 
-Proprietary © GDA Africa & NEXUS Framework Contributors. All rights reserved.
+Proprietary additions and modifications © 2026 GDA Africa & NEXUS Framework Contributors. All rights reserved.
+Upstream components © 2026 DeepSeek under the MIT License. See [LICENSE](LICENSE) for full legal text and third-party notices.
