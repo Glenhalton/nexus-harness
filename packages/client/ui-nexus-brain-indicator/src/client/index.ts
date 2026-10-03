@@ -85,18 +85,18 @@ export function extractBrainFromSession(
             return {
               state: {
                 status: vitals?.dirty ? 'drift' : 'synced',
-                planId,
-                planStatus: plan?.status,
-                planNextStep: plan?.nextStep,
-                branch: vitals?.branch,
-                dirty: vitals?.dirty,
-                testsSummary: vitals?.testsSummary,
+                ...(planId !== undefined && { planId }),
+                ...(plan?.status !== undefined && { planStatus: plan.status }),
+                ...(plan?.nextStep !== undefined && { planNextStep: plan.nextStep }),
+                ...(vitals?.branch !== undefined && { branch: vitals.branch }),
+                ...(vitals?.dirty !== undefined && { dirty: vitals.dirty }),
+                ...(vitals?.testsSummary !== undefined && { testsSummary: vitals.testsSummary }),
               },
               planData: plan && planId ? {
                 id: planId,
                 title: plan.title || `Plan #${planId}`,
                 status: plan.status || 'in_progress',
-                nextStep: plan.nextStep,
+                nextStep: plan.nextStep ?? null,
                 steps: Array.isArray(plan.steps) ? plan.steps : (plan.nextStep ? [{ text: plan.nextStep, done: false }] : []),
               } : null,
             }
