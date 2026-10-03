@@ -1,5 +1,9 @@
 {
-  "active": [],
-  "set_at": "2026-08-22T18:12:59.196Z",
-  "by": "nexus scaffold"
+  "active": [
+    "desktop-app-rebrand-release-pipeline-and-nexus-on-path",
+    "in-app-onboarding-for-non-technical-users",
+    "slim-the-npm-harness-package-and-expose-nexus-bin"
+  ],
+  "set_at": "2026-10-03T09:01:04.458Z",
+  "by": "nexus plan start"
 }
