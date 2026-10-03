@@ -17,7 +17,7 @@
 
 ## 2. In-Process NEXUS Brain Tools (`tool-nexus-brain`)
 * **The Problem in Upstream:** Connecting custom tools to DSH traditionally requires spinning up separate MCP processes communicating over stdio JSON-RPC, introducing network latency, process crash points, and disconnected logging.
-* **Our Enhancement:** We created `packages/experimental/tool-nexus-brain/` which mounts all 17 NEXUS tools (`nexus_wake`, `nexus_plan_tick`, `nexus_plan_verify`, `nexus_query_knowledge`, `nexus_doctor`, etc.) **directly in-process** on `ctx.tools`.
+* **Our Enhancement:** We created `packages/experimental/tool-nexus-brain/` which mounts all 19 NEXUS tools (`nexus_wake`, `nexus_plan_tick`, `nexus_plan_verify`, `nexus_log`, `nexus_project_graph`, `nexus_query_knowledge`, `nexus_doctor`, etc.) **directly in-process** on `ctx.tools` with Schemastery lossless JSON sanitization.
 * **Commercial Edge:** Instant zero-latency tool dispatch, fully integrated into the harness's event timeline and token accounting without external daemon processes.
 
 ---
@@ -95,3 +95,12 @@
   - **Responsible Protection Claims:** Minification is a pragmatic friction layer rather than unbreakable encryption or DRM. True product defensibility stems from continuous ecosystem velocity, active plan synchronization, and deep platform integration.
   - **Strict Legal & License Compliance:** Shipped under `SEE LICENSE IN LICENSE`. Fully preserves the original DeepSeek MIT copyright notice for all upstream base components, while reserving All Rights Reserved proprietary rights for NEXUS additions (custom themes, branding, launcher bindings, and brain-context plugins).
 * **Commercial Edge:** Professional, friction-reduced distribution that respects open-source licensing obligations while clearly asserting commercial ownership over proprietary additions.
+
+---
+
+## 11. Dynamic Verified Skills Registry & On-Demand Resolution
+* **The Problem in Upstream:** Upstream agents operate without curated architectural skills or require manual skill downloads into the local workspace. If a project lacks a specific skill locally, the agent falls back to generic, often outdated model assumptions.
+* **Our Enhancement:**
+  - Linked `@nexus-framework/skills` directly to the CLI and Harness with a multi-tiered fallback hierarchy: `custom/` (local user overrides) > `core/` (project-installed skills) > `community/` (third-party packs) > `verified` (in-memory registry fallback from `@nexus-framework/skills`).
+  - Elevated the skills registry with production-standard architectures: **AI Integration** (Zod schemas, SSE streaming, token budgeting), **Authentication Patterns** (HttpOnly cookies, Argon2id, JWT rotatable refresh), **Zero-Downtime Data Migrations** (expand-and-contract, concurrent indexing, lock timeouts), **State Machines & Workflows** (FSM transition matrices, Idempotency-Keys, Saga orchestrations), **Docker Containerization** (multi-stage builds, non-root `appuser`, signal forwarding), and complete **API Design & Testing** packs for Python, Go, and Rust.
+* **Commercial Edge:** Out-of-the-box enterprise expertise. Even in a brand-new unconfigured repository, Nexus Harness automatically resolves verified, best-practice skills for full-stack microservices without manual configuration.
