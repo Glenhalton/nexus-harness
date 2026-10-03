@@ -44,6 +44,9 @@ const ARGS: Record<string, Record<string, unknown>> = {
   nexus_plan_tick: { id: 'fixture-plan', step: 2, checked: true },
   nexus_plan_note: { id: 'fixture-plan', message: 'coverage sweep note' },
   nexus_add_knowledge_entry: { category: 'pattern', title: 'Coverage sweep entry', body: 'Exercised by the coverage sweep test.' },
+  nexus_log: { message: 'Coverage sweep progress entry', status: 'completed' },
+  nexus_plan_verify: { id: 'fixture-plan', waiver: 'Tested under coverage sweep' },
+  nexus_project_graph: {},
 }
 
 describe('tool-nexus-brain coverage sweep', () => {

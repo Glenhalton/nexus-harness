@@ -1,12 +1,13 @@
 /**
- * Model-facing NEXUS project-brain tools. Wraps `@nexus-framework/cli`'s 16
+ * Model-facing NEXUS project-brain tools. Wraps `@nexus-framework/cli`'s 19
  * MCP tool handlers as Cordis-registered tools on `ctx.tools`, so an agent
  * running inside this harness gets the same project intelligence (plan
- * state, knowledge base, skills, doctor drift report, alignment gate) a
- * NEXUS-aware coding agent gets over stdio — with every call flowing through
- * this harness's own tool pipeline and therefore its session log, instead of
- * a separate MCP transport. The scoped-context composition itself
- * (`nexus_get_context`) has moved to the ambient, tool-call-free
+ * state, knowledge base, skills, doctor drift report, alignment gate, progress
+ * logs, provable done verification, and project graph) a NEXUS-aware coding
+ * agent gets over stdio — with every call flowing through this harness's own
+ * tool pipeline and therefore its session log, instead of a separate MCP
+ * transport. The scoped-context composition itself (`nexus_get_context`) has
+ * moved to the ambient, tool-call-free
  * `@deepseek-ai/dsh-experimental-nexus-brain-context` companion package.
  * @module @deepseek-ai/dsh-experimental-tool-nexus-brain
  */
@@ -17,6 +18,7 @@ import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import {
   addKnowledgeEntryTool,
+  brainLogTool,
   briefTool,
   doctorTool,
   getActivePlanTool,
@@ -31,7 +33,9 @@ import {
   listSkillsTool,
   planNoteTool,
   planTickTool,
+  planVerifyTool,
   PLAN_STATUSES,
+  projectGraphTool,
   queryKnowledgeTool,
   resolveBrainContext,
   wakeTool,
@@ -71,11 +75,8 @@ export function apply(ctx: Context, config: Config): void {
     type: 'text',
     text: JSON.stringify(value, null, 2),
   }]
-  // Tool handler return types are plain data interfaces (no index signature),
-  // which JsonValue's mapped-object branch requires structurally even though
-  // every field is already JSON-serializable data — the same cast the
-  // tool-cordis package uses for the same DSL escape hatch.
-  const toJson = (value: unknown): JsonValue => value as JsonValue
+  const toJson = (value: unknown): JsonValue =>
+    (value === undefined ? null : JSON.parse(JSON.stringify(value))) as JsonValue
 
   ctx.tools.register(defineTool({
     name: 'nexus_wake',
@@ -316,5 +317,46 @@ export function apply(ctx: Context, config: Config): void {
       const res = await addKnowledgeEntryTool(brainCtx, args)
       return { heading: res.heading ?? '', appended: true as const }
     },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'nexus_log',
+    description: 'Append an entry to the NEXUS Progress Log (docs/index.md).',
+    parameters: {
+      message: { type: 'string', required: true, description: 'What was accomplished or progressed.' },
+      status: { type: 'string', enum: ['completed', 'in-progress', 'blocked', 'failed'], description: 'Status indicator (default: completed).' },
+      scope: { type: 'string', description: 'Target scope (e.g. root or sub-package).' },
+      date: { type: 'string', description: 'Date in YYYY-MM-DD format (defaults to today).' },
+    },
+    output: { schema: { type: 'json' }, render: asJson },
+    presentCall: args => ({ card: 'generic', title: 'NEXUS: progress log', kind: 'other', rawInput: args }),
+    execute: (args: Record<string, unknown>) =>
+      brainLogTool(brainCtx, args as Parameters<typeof brainLogTool>[1]).then(toJson),
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'nexus_plan_verify',
+    description: 'Execute automated verification checks and attach tamper-evident Provable Done evidence to a plan.',
+    parameters: {
+      id: { type: 'string', required: true, description: 'Plan id, e.g. "implement-feature".' },
+      waiver: { type: 'string', description: 'Optional explanation if waiving check failures.' },
+      timeoutMs: { type: 'integer', description: 'Execution timeout in ms.' },
+    },
+    output: { schema: { type: 'json' }, render: asJson },
+    presentCall: args => ({ card: 'generic', title: 'NEXUS: plan verify', kind: 'other', rawInput: args }),
+    execute: (args: Record<string, unknown>) =>
+      planVerifyTool(brainCtx, args as Parameters<typeof planVerifyTool>[1]).then(toJson),
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'nexus_project_graph',
+    description: 'Derive and query the NEXUS 2.0 ProjectGraph (Requirements, Features, Tasks, Evidence).',
+    parameters: {
+      root: { type: 'string', description: 'Optional project root override.' },
+    },
+    output: { schema: { type: 'json' }, render: asJson },
+    presentCall: args => ({ card: 'generic', title: 'NEXUS: project graph', kind: 'other', rawInput: args }),
+    execute: (args: Record<string, unknown>) =>
+      projectGraphTool(brainCtx, args as Parameters<typeof projectGraphTool>[1]).then(toJson),
   }))
 }

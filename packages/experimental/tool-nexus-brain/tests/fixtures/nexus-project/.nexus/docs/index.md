@@ -7,3 +7,7 @@ the tool catalog generator and this package's tests — not a real project.
 
 - Nothing — this brain exists only so `resolveBrainContext` has a `.nexus/`
   directory to resolve.
+
+## 🔄 Progress Log
+
+- 2026-08-24 — Initialized fixture project.
