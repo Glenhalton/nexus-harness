@@ -93,8 +93,8 @@ export interface WelcomeOnboardingApi {
   installTerminalCommands(): Promise<TerminalCommandsStatus | null>
 }
 
-/** Host-owned operations used by the welcome window. */
-export interface WelcomeOperations extends WelcomeFolderOperations {
+/** Host-owned sign-in and credential operations the welcome renderer reaches through the preload. */
+export interface WelcomeAuthOperations {
   /** @returns account state after starting a login attempt. */
   startSignIn(): Promise<AccountView>
   /** @param id - attempt to cancel. @returns the settled state. */
@@ -115,8 +115,11 @@ export interface WelcomeOperations extends WelcomeFolderOperations {
   skip(): Promise<void>
 }
 
+/** Main-process operations behind the welcome window's IPC handlers. */
+export type WelcomeOperations = WelcomeAuthOperations & WelcomeFolderOperations
+
 /** The renderer receives localized copy, login operations, and safe account snapshots. */
-export type WelcomeApi = DesktopLocale & WelcomeOperations & {
+export type WelcomeApi = DesktopLocale & WelcomeAuthOperations & {
   /** @param listener - safe account snapshot recipient. @returns subscription disposer. */
   onAccountState(listener: (state: AccountView) => void): () => void
   /** Project-folder and terminal steps shown before sign-in; absent, the welcome opens at sign-in. */

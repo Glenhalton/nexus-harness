@@ -94,7 +94,7 @@ describe('checkDeepSeekApiKey', () => {
   it('reads network failure and timeout as unreachable', async () => {
     expect(await checkDeepSeekApiKey('sk', async () => { throw new Error('ENOTFOUND') })).toBe('unreachable')
     const hang: Send = (_input, init) => new Promise((_resolve, reject) => {
-      init?.signal?.addEventListener('abort', () => { reject(init.signal?.reason) })
+      init?.signal?.addEventListener('abort', () => { reject(new Error('aborted')) })
     })
     expect(await checkDeepSeekApiKey('sk', hang, 5)).toBe('unreachable')
   })

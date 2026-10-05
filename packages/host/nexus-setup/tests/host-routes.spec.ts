@@ -67,7 +67,7 @@ async function boot(): Promise<{ base: string; root: string }> {
 }
 
 /** A fake generator that creates `.nexus/` after an optional gate. */
-function fakeAdopt(gate?: Promise<void>): ReturnType<typeof vi.fn<AdoptProject>> {
+function fakeAdopt(gate?: Promise<undefined>): ReturnType<typeof vi.fn<AdoptProject>> {
   return vi.fn<AdoptProject>(async (dir) => {
     await gate
     await mkdir(join(dir, '.nexus'))
@@ -108,13 +108,13 @@ describe('nexus-setup host routes', () => {
 
   it('scaffolds once, joins a concurrent request, and is idempotent afterwards', async () => {
     const { base, root: dir } = await boot()
-    const gate = Promise.withResolvers<void>()
+    const gate = Promise.withResolvers<undefined>()
     const adopt = fakeAdopt(gate.promise)
     NexusSetup.internals.adopt = () => Promise.resolve(adopt)
     const first = init(base, { path: dir })
     const second = init(base, { path: `${dir}/` })
     await vi.waitFor(() => { expect(adopt).toHaveBeenCalledTimes(1) })
-    gate.resolve()
+    gate.resolve(undefined)
     expect(await (await first).json()).toEqual({ path: dir, state: 'ready', created: true })
     expect(await (await second).json()).toEqual({ path: dir, state: 'ready', created: true })
     expect(await (await init(base, { path: dir })).json()).toEqual({ path: dir, state: 'ready', created: false })
@@ -127,7 +127,9 @@ describe('nexus-setup host routes', () => {
     const response = await init(base, { path: dir })
     expect(response.status).toBe(500)
     expect(await response.json()).toEqual({ code: 'init-failed', message: 'disk full' })
-    NexusSetup.internals.adopt = () => Promise.resolve((() => Promise.reject('opaque')) as unknown as AdoptProject)
+    NexusSetup.internals.adopt = () => Promise.resolve((() =>
+      // oxlint-disable-next-line typescript/prefer-promise-reject-errors -- a non-Error rejection is the scenario.
+      Promise.reject('opaque')) as unknown as AdoptProject)
     expect(await (await init(base, { path: dir })).json()).toEqual({ code: 'init-failed', message: 'opaque' })
   })
 

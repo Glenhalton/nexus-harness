@@ -12,18 +12,20 @@ const offer: TerminalCommandsStatus = { installed: false, binDir: '/Users/me/.lo
 const signedOut: AccountView = { links: { usageUrl: 'http://localhost/usage', topUpUrl: 'http://localhost/top_up' }, status: 'signed-out', attempt: null }
 
 function mount(onboarding?: Partial<WelcomeOnboardingApi>, language = 'en') {
+  const saveApiKey = vi.fn<(value: string) => Promise<WelcomeSaveResult>>().mockResolvedValue({ ok: true })
+  const setUpFolder = vi.fn<WelcomeOnboardingApi['setUpFolder']>().mockResolvedValue({ ok: true })
   const api: WelcomeApi = {
     ...resolveDesktopLocale(language),
     onAccountState: vi.fn(() => () => {}),
     startSignIn: vi.fn(async () => signedOut),
     cancelSignIn: vi.fn(async () => signedOut),
     copySignInLink: vi.fn(async () => undefined),
-    saveApiKey: vi.fn<(value: string) => Promise<WelcomeSaveResult>>().mockResolvedValue({ ok: true }),
+    saveApiKey,
     skip: vi.fn(async () => undefined),
     ...onboarding === undefined ? {} : {
       onboarding: {
         chooseFolder: vi.fn().mockResolvedValue({ name: 'shop', path: '/Users/me/shop', state: 'needs-setup' }),
-        setUpFolder: vi.fn().mockResolvedValue({ ok: true }),
+        setUpFolder,
         useFolder: vi.fn().mockResolvedValue({ ok: true }),
         terminalStatus: vi.fn().mockResolvedValue(offer),
         installTerminalCommands: vi.fn().mockResolvedValue({ ...offer, installed: true }),
@@ -40,8 +42,8 @@ function mount(onboarding?: Partial<WelcomeOnboardingApi>, language = 'en') {
   const click = async (id: string): Promise<void> => {
     await act(async () => { fireEvent.click(document.getElementById(id)!) })
   }
-  const heading = (): string => document.getElementById(document.querySelector('main')!.getAttribute('aria-labelledby')!)!.textContent!
-  return { api, m, visible, click, heading }
+  const heading = (): string => document.getElementById(document.querySelector('main')!.getAttribute('aria-labelledby')!)!.textContent
+  return { api, m, visible, click, heading, saveApiKey, setUpFolder }
 }
 
 describe('desktop welcome onboarding presentation', () => {
@@ -61,7 +63,7 @@ describe('desktop welcome onboarding presentation', () => {
     expect(document.getElementById('setup-folder')!.textContent).toBe('Selected: shop')
     expect(view.visible('setup-error')).toBe(false)
     await view.click('set-up-nexus')
-    expect(view.api.onboarding!.setUpFolder).toHaveBeenCalledOnce()
+    expect(view.setUpFolder).toHaveBeenCalledOnce()
     expect(view.heading()).toBe(view.m.welcomeTerminalTitle)
     expect(document.getElementById('terminal-description')!.textContent).toBe(view.m.welcomeTerminalDescription)
     expect(document.getElementById('terminal-description')!.textContent).toContain('No administrator password')
@@ -78,7 +80,10 @@ describe('desktop welcome onboarding presentation', () => {
 
   it('shows friendly failures and the busy label while setting up', async () => {
     const pending = Promise.withResolvers<{ ok: boolean }>()
-    const view = mount({ setUpFolder: vi.fn().mockReturnValueOnce(pending.promise), installTerminalCommands: vi.fn().mockResolvedValue(null) })
+    const view = mount({
+      setUpFolder: vi.fn().mockReturnValueOnce(pending.promise),
+      installTerminalCommands: vi.fn().mockResolvedValue(null),
+    })
     await view.click('choose-folder')
     await view.click('set-up-nexus')
     expect(document.getElementById('set-up-nexus')!.textContent).toBe(view.m.welcomeFolderSettingUp)
@@ -115,7 +120,7 @@ describe('desktop welcome onboarding presentation', () => {
     [undefined, 'welcomeKeyFailed'],
   ] as const)('explains a %s key check on the form', async (reason, key) => {
     const view = mount()
-    vi.mocked(view.api.saveApiKey).mockResolvedValue(reason === undefined ? { ok: false } : { ok: false, reason })
+    view.saveApiKey.mockResolvedValue(reason === undefined ? { ok: false } : { ok: false, reason })
     await view.click('api-key')
     fireEvent.change(document.querySelector('input')!, { target: { value: 'sk-typo' } })
     await act(async () => { fireEvent.submit(document.querySelector('form')!) })
