@@ -347,7 +347,7 @@ export function cmdShimFiles(target: string): Record<'' | '.cmd' | '.ps1', strin
     + `endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & "%_prog%"  "%dp0%\\${winTarget}" %*\r\n`
   const sh = '#!/bin/sh\nbasedir=$(dirname "$(echo "$0" | sed -e \'s,\\\\,/,g\')")\n\n'
     + 'case `uname` in\n    *CYGWIN*|*MINGW*|*MSYS*)\n        if command -v cygpath > /dev/null 2>&1; then\n            basedir=`cygpath -w "$basedir"`\n        fi\n    ;;\nesac\n\n'
-    + `if [ -x "$basedir/node" ]; then\n  exec "$basedir/node"  "$basedir/${target}" "$@"\nelse \n  exec node  "$basedir/${target}" "$@"\nfi\n`
+    + `if [ -x "$basedir/node" ]; then\n  exec "$basedir/node"  "$basedir/${target}" "$@"\nelse\n  exec node  "$basedir/${target}" "$@"\nfi\n`
   const ps1 = '#!/usr/bin/env pwsh\n$basedir=Split-Path $MyInvocation.MyCommand.Definition -Parent\n\n$exe=""\nif ($PSVersionTable.PSVersion -lt "6.0" -or $IsWindows) {\n  # Fix case when both the Windows and Linux builds of Node\n  # are installed in the same directory\n  $exe=".exe"\n}\n'
     + '$ret=0\nif (Test-Path "$basedir/node$exe") {\n  # Support pipeline input\n  if ($MyInvocation.ExpectingInput) {\n'
     + `    $input | & "$basedir/node$exe"  "$basedir/${target}" $args\n  } else {\n    & "$basedir/node$exe"  "$basedir/${target}" $args\n  }\n  $ret=$LASTEXITCODE\n} else {\n`

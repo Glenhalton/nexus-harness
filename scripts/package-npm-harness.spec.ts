@@ -1,15 +1,17 @@
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 
 import {
   buildHarnessManifest,
+  buildLauncherFiles,
   collectReferencedPackages,
   HARNESS_BINS,
   HARNESS_LAUNCHER_SOURCE,
-  NEXUS_FORWARDER_SOURCE,
+  NEXUS_ENTRY_SOURCE,
+  NEXUS_POSTINSTALL_SOURCE,
   packageNameOfSpecifier,
   planExternalDependencies,
   preferRange,
@@ -166,14 +168,13 @@ describe('planExternalDependencies', () => {
 })
 
 describe('buildHarnessManifest', () => {
-  it('exposes every bin, the given engines, and omits an empty optional section', () => {
+  it('exposes every harness bin, the given engines, and omits an empty optional section', () => {
     const manifest = buildHarnessManifest({ engines: '^22.19.0 || >=24.0.0', dependencies: { ws: '^8.0.0' }, optionalDependencies: {} })
     expect(manifest.bin).toEqual({
       'nexus-harness': 'bin/nexus-harness.js',
       'nexus-code': 'bin/nexus-harness.js',
       harness: 'bin/nexus-harness.js',
       dsh: 'bin/nexus-harness.js',
-      nexus: 'bin/nexus.js',
     })
     expect(manifest.engines).toEqual({ node: '^22.19.0 || >=24.0.0' })
     expect(manifest).not.toHaveProperty('optionalDependencies')
@@ -187,6 +188,13 @@ describe('buildHarnessManifest', () => {
 
   it('maps nexus-code to the harness launcher', () => {
     expect(HARNESS_BINS['nexus-code']).toBe(HARNESS_BINS['nexus-harness'])
+  })
+
+  it('leaves the nexus bin to @nexus-framework/cli and provides it from a postinstall instead', () => {
+    const manifest = buildHarnessManifest({ engines: '>=22', dependencies: {}, optionalDependencies: {} })
+    expect(manifest.bin).not.toHaveProperty('nexus')
+    expect(manifest.scripts).toEqual({ postinstall: 'node bin/nexus-postinstall.js' })
+    expect(Object.values(HARNESS_BINS)).not.toContain('bin/nexus.js')
   })
 })
 
@@ -207,41 +215,101 @@ describe('launchers', () => {
     return root
   }
 
+  const launcherFiles = buildLauncherFiles()
+
+  function writeLaunchers(packageRoot: string): void {
+    write(join(packageRoot, 'package.json'), '{"name":"@nexus-framework/harness","version":"1.1.0","type":"module"}')
+    for (const [file, content] of Object.entries(launcherFiles)) write(join(packageRoot, 'bin', file), content)
+  }
+
+  function writeCli(root: string, version: string, label: string): void {
+    write(join(root, 'package.json'), JSON.stringify({ name: '@nexus-framework/cli', version, type: 'module', bin: { nexus: './bin/nexus.js' } }))
+    write(join(root, 'bin', 'nexus.js'), `console.log(${JSON.stringify(label)}, process.argv.slice(2).join(" "), process.env.NEXUS_BIN_DELEGATED === process.argv[1])\n`)
+  }
+
+  // Module resolution must see only the fixture: no inherited NODE_PATH, no ~/.node_modules.
+  const { NODE_PATH: _ignored, ...isolatedEnv } = process.env
+
+  it('generates the launcher layer, with the helper module type-stripped', () => {
+    expect(Object.keys(launcherFiles).sort()).toEqual(['nexus-command.js', 'nexus-harness.js', 'nexus-postinstall.js', 'nexus.js'])
+    expect(launcherFiles['nexus-harness.js']).toBe(HARNESS_LAUNCHER_SOURCE)
+    expect(launcherFiles['nexus.js']).toBe(NEXUS_ENTRY_SOURCE)
+    expect(launcherFiles['nexus-postinstall.js']).toBe(NEXUS_POSTINSTALL_SOURCE)
+    expect(launcherFiles['nexus-command.js']).toContain('function ensureNexusCommand(')
+    expect(launcherFiles['nexus-command.js']).toMatch(/export \{[^}]*\bensureNexusCommand\b/u)
+    expect(launcherFiles['nexus-command.js']).not.toMatch(/:\s*NexusCli\b|interface /u)
+  })
+
   it('runs the prebuilt CLI in-process with argv[1] at the real entry', () => {
     const root = fixture()
-    write(join(root, 'bin', 'nexus-harness.js'), HARNESS_LAUNCHER_SOURCE)
+    writeLaunchers(root)
     write(
       join(root, 'runtime', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'),
       'export async function runCli(){console.log(JSON.stringify({entry:process.argv[1],args:process.argv.slice(2)}))}\n',
     )
-    write(join(root, 'package.json'), '{"type":"module"}')
-    const result = spawnSync(process.execPath, [join(root, 'bin', 'nexus-harness.js'), 'web', '--no-open'], { encoding: 'utf8' })
+    const result = spawnSync(process.execPath, [join(root, 'bin', 'nexus-harness.js'), 'web', '--no-open'], { encoding: 'utf8', env: { ...isolatedEnv, PATH: '' } })
     expect(result.status).toBe(0)
     const output = JSON.parse(result.stdout) as { entry: string; args: string[] }
     expect(output.entry).toBe(join(root, 'runtime', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js'))
     expect(output.args).toEqual(['web', '--no-open'])
   })
 
-  it('forwards nexus to the bundled @nexus-framework/cli bin', () => {
+  it('forwards nexus to the bundled @nexus-framework/cli bin with the delegation guard set', () => {
     const root = fixture()
-    write(join(root, 'package.json'), '{"type":"module"}')
-    write(join(root, 'bin', 'nexus.js'), NEXUS_FORWARDER_SOURCE)
-    const cli = join(root, 'node_modules', '@nexus-framework', 'cli')
-    write(join(cli, 'package.json'), '{"name":"@nexus-framework/cli","type":"module","bin":{"nexus":"./bin/nexus.js"},"exports":{"./package.json":"./package.json"}}')
-    write(join(cli, 'bin', 'nexus.js'), 'console.log("nexus-cli", process.argv.slice(2).join(" "))\n')
-    const result = spawnSync(process.execPath, [join(root, 'bin', 'nexus.js'), '--version'], { encoding: 'utf8' })
+    writeLaunchers(root)
+    writeCli(join(root, 'node_modules', '@nexus-framework', 'cli'), '1.6.0', 'bundled-cli')
+    const result = spawnSync(process.execPath, [join(root, 'bin', 'nexus.js'), 'wake'], { encoding: 'utf8', cwd: root, env: { ...isolatedEnv, HOME: root } })
     expect(result.status).toBe(0)
-    expect(result.stdout.trim()).toBe('nexus-cli --version')
+    expect(result.stdout.trim()).toBe('bundled-cli wake true')
+  })
+
+  it('labels the version when the bundled CLI answers', () => {
+    const root = fixture()
+    writeLaunchers(root)
+    writeCli(join(root, 'node_modules', '@nexus-framework', 'cli'), '1.6.0', 'bundled-cli')
+    const result = spawnSync(process.execPath, [join(root, 'bin', 'nexus.js'), '--version'], { encoding: 'utf8', cwd: root, env: { ...isolatedEnv, HOME: root } })
+    expect(result.stdout.trim()).toBe('1.6.0 (via @nexus-framework/harness)')
+  })
+
+  it('runs a newer global @nexus-framework/cli instead of the bundled one', () => {
+    const root = fixture()
+    const nodeModules = join(root, 'lib', 'node_modules')
+    const harness = join(nodeModules, '@nexus-framework', 'harness')
+    writeLaunchers(harness)
+    writeCli(join(harness, 'node_modules', '@nexus-framework', 'cli'), '1.6.0', 'bundled-cli')
+    writeCli(join(nodeModules, '@nexus-framework', 'cli'), '2.0.0', 'global-cli')
+    const result = spawnSync(process.execPath, [join(harness, 'bin', 'nexus.js'), '--version'], { encoding: 'utf8', cwd: root, env: { ...isolatedEnv, HOME: root } })
+    expect(result.stdout.trim()).toBe('global-cli --version true')
   })
 
   it('explains a missing bundled CLI instead of crashing', () => {
     const root = fixture()
-    write(join(root, 'package.json'), '{"type":"module"}')
-    write(join(root, 'bin', 'nexus.js'), NEXUS_FORWARDER_SOURCE)
-    // Module resolution must see only the fixture: no inherited NODE_PATH, no ~/.node_modules.
-    const { NODE_PATH: _ignored, ...environment } = process.env
-    const result = spawnSync(process.execPath, [join(root, 'bin', 'nexus.js')], { encoding: 'utf8', cwd: root, env: { ...environment, HOME: root } })
+    writeLaunchers(root)
+    const result = spawnSync(process.execPath, [join(root, 'bin', 'nexus.js')], { encoding: 'utf8', cwd: root, env: { ...isolatedEnv, HOME: root } })
     expect(result.status).toBe(1)
     expect(result.stderr).toMatch(/@nexus-framework\/cli is missing/u)
+  })
+
+  it('postinstall provides nexus for a global npm install only, and never fails', () => {
+    const root = fixture()
+    const harness = join(root, 'lib', 'node_modules', '@nexus-framework', 'harness')
+    writeLaunchers(harness)
+    mkdirSync(join(root, 'bin'))
+    symlinkSync('../lib/node_modules/@nexus-framework/harness/bin/nexus-harness.js', join(root, 'bin', 'nexus-code'))
+    const postinstall = join(harness, 'bin', 'nexus-postinstall.js')
+
+    const local = spawnSync(process.execPath, [postinstall], { encoding: 'utf8', cwd: harness, env: { ...isolatedEnv, npm_config_global: '' } })
+    expect(local.status).toBe(0)
+    expect(existsSync(join(root, 'bin', 'nexus'))).toBe(false)
+
+    const global = spawnSync(process.execPath, [postinstall], { encoding: 'utf8', cwd: harness, env: { ...isolatedEnv, npm_config_global: 'true' } })
+    expect(global.status).toBe(0)
+    expect(global.stdout).toContain('nexus: linked the NEXUS CLI')
+    expect(readlinkSync(join(root, 'bin', 'nexus'))).toBe('../lib/node_modules/@nexus-framework/cli/bin/nexus.js')
+
+    // A broken helper must not fail the install.
+    writeFileSync(join(harness, 'bin', 'nexus-command.js'), 'throw new Error("boom")\n')
+    const broken = spawnSync(process.execPath, [postinstall], { encoding: 'utf8', cwd: harness, env: { ...isolatedEnv, npm_config_global: 'true' } })
+    expect(broken.status).toBe(0)
   })
 })
