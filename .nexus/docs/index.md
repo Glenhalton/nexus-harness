@@ -74,6 +74,11 @@ _Last sync: 2026-10-03T09:01:04.402Z · branch `master` · 0 commits ahead of ma
 | 6 | Promote Bridge Packages from Experimental | P0 | 🟡 Active | Phase 3 | Promote to standard workspace package group |
 | 7 | Default Profile Context Auto-Mount | P1 | 🟡 Active | Phase 3 | Mount ambient context in default `cordis.yml` |
 | 8 | NEXUS 2.0 Execution Evidence Pipeline | P0 | 📋 Planned | Phase 4 | Export `AgentRun` session logs as task Evidence |
+| 9 | Desktop Distribution (Nexus Harness app, GitHub Releases, `nexus`/`nexus-code` on PATH) | P0 | 🟢 Built | Phase 3 | Packaged builds still unverified on Apple Silicon/Windows; awaiting signing certs |
+| 10 | In-App Onboarding (Set up NEXUS, terminal commands, key check) | P0 | 🟢 Built | Phase 3 | Desktop key check is DeepSeek-only |
+| 11 | Slim npm Harness Package (prebuilt JS, runtime-only deps) | P1 | 🟢 Built | Phase 3 | 27.6 MB → 10.3 MB tarball |
+| 12 | Choose Your AI Provider first-run step | P1 | 📋 Planned | Phase 4 | Let first-run onboarding (desktop + web) pick Claude, Ollama, OpenAI-compatible etc., not just DeepSeek, with a per-provider connection test |
+| 13 | Code Signing & Notarization | P0 | 📋 Planned | Phase 3 | Owner: user. See `.nexus/plans/code-signing-and-notarization-credentials.md` |
 
 ---
 
@@ -90,6 +95,12 @@ _Last sync: 2026-10-03T09:01:04.402Z · branch `master` · 0 commits ahead of ma
 ---
 
 ## 🔄 Progress Log
+
+### 2026-10-05 — Desktop Distribution, Onboarding, and npm Slimming Merged
+- ✅ Merged three plans to master: desktop rebrand + GitHub Releases + terminal commands, in-app onboarding, slim npm package.
+- ✅ Typecheck clean on host + client; scoped tests 1270 passed (2 load-timeout flakes pass in isolation).
+- ⚠️ `tool-nexus-brain` coverage sweep fails on `nexus_log` under CLI 1.6.0 (`split('\\n')` bug in brain-memory); fixed in CLI 2.0.0 source. Resolves when the harness moves to CLI 2.0.0.
+- ⏭️ Added backlog #12 "Choose Your AI Provider" first-run step.
 
 ### 2026-09-07 — Harness Project Brain Populated (Track 1 Complete)
 - ✅ All 8 template docs (`01_vision.md` through `08_deployment.md`) populated with actual Cordis architecture, event contracts, runtime state machines, test hierarchies, and deployment modes.
