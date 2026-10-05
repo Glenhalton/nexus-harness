@@ -28,6 +28,12 @@
     },
     {
       "path": "../locale/tsconfig.client.json"
+    },
+    {
+      "path": "../store"
+    },
+    {
+      "path": "../ui-nexus-setup"
     }
   ]
 }

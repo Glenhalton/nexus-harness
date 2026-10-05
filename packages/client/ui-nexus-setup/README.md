@@ -34,7 +34,7 @@ Mount this plugin in the Web composition beside [`dsh-host-nexus-setup`](../../h
 <details>
 <summary>Implementation internals — click to expand</summary>
 
-A page-lifetime controller ([`src/client/controller.ts`](src/client/controller.ts)) reads each folder's status once and owns the setup POST; per-folder phases (`checking`, `needs-setup`, `setting-up`, `failed`, `ready`, `missing`, `unavailable`, `dismissed`) publish through one snapshot store that the component receives through the inject `hooks` compartment. The component reads the session's `cwd` through `useSessions` and renders only in the `needs-setup`, `setting-up`, and `failed` phases. Route forms come from the host package's browser-safe `./shared` subpath.
+A page-lifetime controller ([`src/client/controller.ts`](src/client/controller.ts)) reads each folder's status once and owns the setup POST; per-folder phases (`checking`, `needs-setup`, `setting-up`, `failed`, `ready`, `missing`, `unavailable`, `dismissed`) publish through one snapshot store that the component receives through the inject `hooks` compartment. The component reads the session's `cwd` through `useSessions` and renders only in the `needs-setup`, `setting-up`, and `failed` phases. Which Session's dialog is open also lives in the controller, so another surface can open it. The plugin provides the `nexusSetup` service (`phases`, `check`, `openDialog`); [`ui-nexus-brain-indicator`](../ui-nexus-brain-indicator/README.md) reads folder status from it before any turn and refreshes when setup succeeds. Route forms come from the host package's browser-safe `./shared` subpath.
 
 </details>
 
@@ -54,7 +54,6 @@ None; this package neither assembles nor sends a provider request.
 <a id="known-limitations-and-deferred-work"></a>
 
 - **Status is read once per folder per page.** A `.nexus/` created outside the app (for example by `nexus init` in a terminal) hides the button after a reload.
-- **The brain chip follows the next turn.** [`ui-nexus-brain-indicator`](../ui-nexus-brain-indicator/) derives its state from the context injected on the next turn, not from this setup.
 
 <a id="dev-note"></a>
 ### Dev Note
@@ -66,4 +65,4 @@ Plan: `.nexus/plans/in-app-onboarding-for-non-technical-users.md`.
 
 </details>
 
-**Runtime invariant:** No companion is published. The plugin registers one dictionary effect and one slot entry whose disposal the HMR-safety spec proves; folder phases live only in the controller's snapshot store.
+**Runtime invariant:** No companion is published. The plugin registers one dictionary effect, one slot entry, and the `nexusSetup` service, whose disposal the HMR-safety spec proves; folder phases and the open dialog live only in the controller's snapshot stores.
