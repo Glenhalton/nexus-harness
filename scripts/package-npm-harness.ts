@@ -12,9 +12,12 @@
  * 3. Derive `dependencies` from the external packages the shipped JavaScript actually
  *    references, intersected with what the closure manifests declare.
  * 4. Minify the shipped JavaScript with esbuild (the obfuscation step).
- * 5. Write the thin launchers (`nexus-harness`/`nexus-code`/`harness`/`dsh` and the
- *    `nexus` forwarder to the bundled `@nexus-framework/cli`), manifest, and LICENSE.
+ * 5. Write the thin launchers (`nexus-harness`/`nexus-code`/`harness`/`dsh`), the `nexus`
+ *    entry and postinstall built from scripts/nexus-command.ts, manifest, and LICENSE.
  *    README.md is maintained by hand next to the generated files.
+ *
+ * The harness does not declare `bin.nexus`: @nexus-framework/cli owns it on npm, and the
+ * harness provides the command only when it is missing (see scripts/nexus-command.ts).
  */
 
 import { spawn } from 'node:child_process'
@@ -62,13 +65,20 @@ export const HARNESS_ROOT_PACKAGES: readonly string[] = [
   '@deepseek-ai/dsh-experimental-nexus-brain-context',
 ]
 
-/** Bin names; every harness alias runs the same launcher. */
+/**
+ * Bin names; every harness alias runs the same launcher. `nexus` is deliberately absent:
+ * @nexus-framework/cli is its only npm owner, so the two packages never clash with EEXIST.
+ */
 export const HARNESS_BINS: Readonly<Record<string, string>> = {
   'nexus-harness': 'bin/nexus-harness.js',
   'nexus-code': 'bin/nexus-harness.js',
   harness: 'bin/nexus-harness.js',
   dsh: 'bin/nexus-harness.js',
-  nexus: 'bin/nexus.js',
+}
+
+/** Lifecycle scripts of the published package; the postinstall never fails the install. */
+export const HARNESS_SCRIPTS: Readonly<Record<string, string>> = {
+  postinstall: 'node bin/nexus-postinstall.js',
 }
 
 /** Files under the unpacked runtime that are never needed to run (types, source maps, build state). */
@@ -319,6 +329,7 @@ export function buildHarnessManifest(input: HarnessManifestInput): Record<string
     },
     type: 'module',
     bin: { ...HARNESS_BINS },
+    scripts: { ...HARNESS_SCRIPTS },
     files: [
       'bin',
       'runtime',
@@ -348,46 +359,78 @@ export function buildHarnessManifest(input: HarnessManifestInput): Record<string
 }
 
 /**
- * Launcher shared by `nexus-harness`, `nexus-code`, `harness`, and `dsh`. It runs the
- * prebuilt CLI in-process (no `tsx`, no second Node process) and points `process.argv[1]`
- * at the real entry so code that re-derives the entry path keeps working.
+ * Launcher shared by `nexus-harness`, `nexus-code`, `harness`, and `dsh`. It first makes sure
+ * `nexus` exists (the fallback for `--ignore-scripts` and for pnpm/yarn globals, whose
+ * postinstall may never run), then runs the prebuilt CLI in-process (no `tsx`, no second
+ * Node process) with `process.argv[1]` at the real entry so code that re-derives it keeps working.
  */
 export const HARNESS_LAUNCHER_SOURCE = `#!/usr/bin/env node
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+try {
+  const { ensureNexusCommand } = await import('./nexus-command.js');
+  ensureNexusCommand({ harnessRoot: packageRoot });
+} catch {
+  // Providing nexus is best effort; the harness itself must always start.
+}
 const entry = path.join(packageRoot, 'runtime', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js');
 process.argv[1] = entry;
 const { runCli } = await import(pathToFileURL(entry).href);
 await runCli();
 `
 
-/** Forwarder that runs the bundled @nexus-framework/cli \`nexus\` bin in-process. */
-export const NEXUS_FORWARDER_SOURCE = `#!/usr/bin/env node
-import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
+/**
+ * The harness's `nexus` entry. It is not an npm bin: the placeholder CLI package and the
+ * plain shims run it. It runs the newest installed CLI, global or bundled.
+ */
+export const NEXUS_ENTRY_SOURCE = `#!/usr/bin/env node
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
+import { runNexus } from './nexus-command.js';
 
-const require = createRequire(import.meta.url);
-let manifestPath;
-try {
-  manifestPath = require.resolve('${NEXUS_CLI_PACKAGE}/package.json');
-} catch {
-  console.error('nexus: ${NEXUS_CLI_PACKAGE} is missing from this ${HARNESS_PACKAGE_NAME} install; reinstall the package.');
-  process.exit(1);
-}
-const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-const bin = typeof manifest.bin === 'string' ? manifest.bin : manifest.bin?.nexus;
-if (typeof bin !== 'string') {
-  console.error('nexus: ${NEXUS_CLI_PACKAGE} declares no nexus bin.');
-  process.exit(1);
-}
-const entry = path.resolve(path.dirname(manifestPath), bin);
-process.argv[1] = entry;
-await import(pathToFileURL(entry).href);
+await runNexus(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'));
 `
+
+/** Postinstall: provide \`nexus\` for global installs only, and never fail the install. */
+export const NEXUS_POSTINSTALL_SOURCE = `#!/usr/bin/env node
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+if (process.env.npm_config_global === 'true') {
+  try {
+    const { ensureNexusCommand } = await import('./nexus-command.js');
+    const result = ensureNexusCommand({ harnessRoot: path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..') });
+    if (result.status === 'created') console.log('nexus: linked the NEXUS CLI bundled with ${HARNESS_PACKAGE_NAME} at ' + result.path);
+  } catch {
+    // Best effort: nexus-code repeats this on every start.
+  }
+}
+`
+
+/** Source of the launcher helper module, type-stripped into bin/nexus-command.js. */
+const NEXUS_COMMAND_SOURCE = join(REPO_ROOT, 'scripts', 'nexus-command.ts')
+
+/**
+ * Every file in the published bin/ directory, keyed by file name.
+ * @param esbuild - esbuild, used to strip types from scripts/nexus-command.ts.
+ * @returns File contents.
+ */
+export function buildLauncherFiles(esbuild: Esbuild = loadEsbuild()): Record<string, string> {
+  const helper = esbuild.transformSync(readFileSync(NEXUS_COMMAND_SOURCE, 'utf8'), {
+    loader: 'ts',
+    format: 'esm',
+    target: 'es2022',
+    legalComments: 'inline',
+  }).code
+  return {
+    'nexus-harness.js': HARNESS_LAUNCHER_SOURCE,
+    'nexus.js': NEXUS_ENTRY_SOURCE,
+    'nexus-postinstall.js': NEXUS_POSTINSTALL_SOURCE,
+    'nexus-command.js': `// Generated from scripts/nexus-command.ts by scripts/package-npm-harness.ts.\n${helper}`,
+  }
+}
 
 function readJson(path: string): Record<string, unknown> {
   return JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>
@@ -572,7 +615,8 @@ export async function packageHarness(): Promise<void> {
   for (const conflict of plan.conflicts) console.warn(`⚠️  range conflict, highest minimum wins — ${conflict}`)
 
   // 5. Minify & obfuscate the shipped JavaScript.
-  const minify = minifyRuntime(loadEsbuild())
+  const esbuild = loadEsbuild()
+  const minify = minifyRuntime(esbuild)
   console.log(`✅ Minified ${String(minify.minified)} runtime JavaScript files.`)
   if (minify.failed.length > 0) {
     throw new Error(`package-npm-harness: esbuild could not minify ${String(minify.failed.length)} file(s): ${minify.failed.slice(0, 10).join(', ')}`)
@@ -582,7 +626,7 @@ export async function packageHarness(): Promise<void> {
   const binDir = join(PKG_DIR, 'bin')
   rmSync(binDir, { recursive: true, force: true })
   mkdirSync(binDir, { recursive: true })
-  for (const [file, content] of [['nexus-harness.js', HARNESS_LAUNCHER_SOURCE], ['nexus.js', NEXUS_FORWARDER_SOURCE]] as const) {
+  for (const [file, content] of Object.entries(buildLauncherFiles(esbuild))) {
     writeFileSync(join(binDir, file), content, 'utf8')
     chmodSync(join(binDir, file), 0o755)
   }

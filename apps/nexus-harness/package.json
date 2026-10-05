@@ -10,8 +10,10 @@
     "nexus-harness": "bin/nexus-harness.js",
     "nexus-code": "bin/nexus-harness.js",
     "harness": "bin/nexus-harness.js",
-    "dsh": "bin/nexus-harness.js",
-    "nexus": "bin/nexus.js"
+    "dsh": "bin/nexus-harness.js"
+  },
+  "scripts": {
+    "postinstall": "node bin/nexus-postinstall.js"
   },
   "files": [
     "bin",
