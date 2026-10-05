@@ -123,8 +123,8 @@ jobs:
         if: steps.version.outputs.changed == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.current }}
-          name: @nexus-framework/harness v${{ steps.version.outputs.current }}
+          tag_name: "v${{ steps.version.outputs.current }}"
+          name: "@nexus-framework/harness v${{ steps.version.outputs.current }}"
           body: |
             ## @nexus-framework/harness v${{ steps.version.outputs.current }}
 
