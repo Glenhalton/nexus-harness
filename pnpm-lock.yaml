@@ -8902,7 +8902,7 @@ importers:
     dependencies:
       '@nexus-framework/cli':
         specifier: ^1.4.0
-        version: 1.6.0(@types/node@26.1.2)(supports-color@9.4.0)
+        version: 1.6.0(@types/node@26.1.2)
     devDependencies:
       '@deepseek-ai/cordis':
         specifier: workspace:~
