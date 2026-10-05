@@ -44,7 +44,7 @@ const RUNTIME_MODULES_DIR = join(RUNTIME_DIR, 'node_modules')
 /** Published package identity. */
 export const HARNESS_PACKAGE_NAME = '@nexus-framework/harness'
 /** Published package version; bump deliberately before a release. */
-export const HARNESS_VERSION = '1.0.0'
+export const HARNESS_VERSION = '1.1.0'
 /** Workspace package that owns the harness command-line entry (`lib/bin.js`). */
 export const CLI_PACKAGE = '@deepseek-ai/dsh'
 /** npm package whose `nexus` bin the `nexus` forwarder runs. */

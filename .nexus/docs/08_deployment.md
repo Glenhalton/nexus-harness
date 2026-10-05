@@ -4,7 +4,7 @@ id: "08_deployment"
 title: "Deployment & Distribution"
 status: populated
 confidence: high
-last_updated: "2026-09-07"
+last_updated: "2026-10-05"
 ---
 
 # Deployment & Distribution — NEXUS Execution Harness
@@ -51,3 +51,59 @@ pnpm run build
 pnpm run publint
 pnpm run hygiene
 ```
+
+---
+
+## 🚢 Release Runbook — NEXUS Stack (skills 0.5.0 → CLI 2.0.0 → harness 1.1.0)
+
+Publish strictly in this order. Each step's lockfile can only resolve the previous
+package once it exists on npm, so a step never starts before the one above is live.
+
+| Package | Repo | Version | On npm before this release |
+|---|---|---|---|
+| `@nexus-framework/skills` | `nexus-skills/packages/core` | 0.5.0 | 0.4.0 |
+| `@nexus-framework/cli` | `nexus-cli` | 2.0.0 | 1.6.0 |
+| `@nexus-framework/harness` | `nexus-harness` → `apps/nexus-harness` (generated) | 1.1.0 | 1.0.0 (cannot be reused) |
+
+### 1. Skills 0.5.0
+```bash
+cd nexus-skills && git push origin main --tags
+cd packages/core && npm publish --access public
+npm view @nexus-framework/skills@0.5.0 version   # confirm
+```
+
+### 2. CLI 2.0.0
+`package.json` must depend on `"@nexus-framework/skills": "^0.5.0"`, not the
+`file:../nexus-skills/packages/core` link used for local development.
+```bash
+cd nexus-cli
+npm install @nexus-framework/skills@^0.5.0      # rewrites package.json + package-lock from the registry
+npm run build && npx tsc --noEmit && npm test && npm run lint
+npm pack --dry-run                              # no file: deps, dist/ + bin/ + templates/ present
+git commit -am "chore(release): depend on published @nexus-framework/skills 0.5.0"
+git push origin main && git tag v2.0.0 && git push origin v2.0.0
+npm publish --access public
+```
+
+### 3. Harness 1.1.0
+```bash
+cd nexus-harness
+# Move every workspace consumer of the CLI to 2.0.0
+for p in packages/experimental/tool-nexus-brain packages/experimental/nexus-brain-context packages/host/nexus-setup; do
+  (cd $p && pnpm add @nexus-framework/cli@^2.0.0)
+done
+pnpm install
+node ./node_modules/typescript/bin/tsc -b tsconfig.host.json && npx tsc -b tsconfig.client.json
+npx vitest run packages/experimental/tool-nexus-brain packages/experimental/nexus-brain-context packages/host/nexus-setup packages/client/ui-nexus-setup packages/client/ui-nexus-brain-indicator scripts/package-npm-harness.spec.ts
+# HARNESS_VERSION in scripts/package-npm-harness.ts and root package.json "version" are already 1.1.0
+pnpm run build:lib && pnpm run package:harness
+cd apps/nexus-harness && npm pack && npm i -g --prefix "$(mktemp -d)" ./nexus-framework-harness-1.1.0.tgz   # smoke: nexus --version, nexus-code --help
+git commit -am "chore(release): build harness 1.1.0 against NEXUS CLI 2.0.0" && git push
+npm publish --access public
+```
+
+### Known release notes
+- The `tool-nexus-brain` coverage sweep fails on `nexus_log` under CLI 1.6.0 (a `split('\\n')` bug in
+  `brain-memory`). It is fixed in CLI 2.0.0, so step 3's test run is the gate that proves it.
+- Desktop installers release separately via `.github/workflows/desktop-release.yml` on a
+  `desktop-v<version>` tag, unsigned until the signing secrets exist.
