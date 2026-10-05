@@ -62,3 +62,19 @@ GitHub redirects that path to the newest published non-prerelease release, so fe
 
 ### [pattern] Optional cross-plugin client service: ctx.inject sub-fiber plus a relay observable
 **2026-10-05** — Cordis has no optional inject, so a client plugin that must render with or without another plugin's service (the brain chip and `nexusSetup`) binds it in `ctx.inject(['svc'], scope => scope.effect(() => link.attach(scope.svc)))`. It hands components one stable relay observable through the inject `hooks` compartment that reads `null` while the service is absent. The relay replays requests made before the service arrived; see `packages/client/ui-nexus-brain-indicator/src/client/setup-link.ts`.
+
+### [architecture] The `nexus` command is shared, not owned: CLI keeps the npm bin, harness fills the gap
+**2026-10-05** — `@nexus-framework/cli` is the sole npm owner of `bin.nexus`; the harness
+dropped it. The harness instead writes a marked `nexus` shim (POSIX + `.cmd`/`.ps1`) into the
+global bin dir when none exists — from a global-only `postinstall`, and again on every
+`nexus-code`/`nexus-harness` start so `--ignore-scripts`, pnpm and yarn globals are covered. It
+never overwrites a `nexus` it did not create. Whichever entry runs compares the two installs'
+CLI versions and execs the newest, guarded by `NEXUS_BIN_DELEGATED` against loops, so the
+command behaves like an upgrade/downgrade of the other package rather than a conflict.
+`nexus --version` names the answering install, e.g. `1.6.0 (via @nexus-framework/harness)`.
+Verified empirically in temp npm prefixes (harness 1.1.0 + CLI 2.0.0 tarballs), all seven
+scenarios, zero EEXIST: harness-only and CLI-only install; CLI→harness and harness→CLI (both
+resolve `nexus` to CLI 2.0.0, the newer); uninstalling the harness leaves the CLI's `nexus`
+intact; uninstalling the CLI removes `nexus` until one `nexus-code` run restores the harness
+shim (npm 7+ runs no uninstall scripts, so this self-heal is the recovery path); and an
+`--ignore-scripts` install gains `nexus` on first `nexus-code` run, idempotently.
