@@ -202,7 +202,7 @@ export function apply(ctx: Context, config: Config): void {
         additionalProperties: false,
         properties: {
           name: { type: 'string', required: true },
-          source: { type: 'string', required: true, enum: ['custom', 'core', 'community'] },
+          source: { type: 'string', required: true, enum: ['custom', 'core', 'community', 'verified'] },
           markdown: { type: 'string', required: true },
         },
       },

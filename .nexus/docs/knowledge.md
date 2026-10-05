@@ -49,6 +49,7 @@ Optional: Brief supporting detail (1-2 sentences max).
 
 ### [architecture] npm harness = pnpm-packed dsh closure + evidence-derived externals
 **2026-10-05** — scripts/package-npm-harness.ts follows the same closure rule as Desktop (deps, peers, optionals from @deepseek-ai/dsh plus the Nexus brain plugins). It runs `pnpm pack` on each package so `files` and `workspace:` rewriting behave exactly as they would on publish. External deps are kept only if the shipped JS references them. Platform packages restricted by os/cpu (node-addon-system-*) go out as npm optionalDependencies, since one machine can only build its own binary.
+
 ### [architecture] Desktop Updates Use GitHub latest/download With The Existing Generic Provider
 **2026-10-05** — Desktop releases point electron-updater's unchanged generic provider + fixed `nightly` channel at `https://github.com/GDA-Africa/nexus-harness/releases/latest/download/` (`DSH_DESKTOP_AUTO_UPDATE_ENV=github`, now the default) instead of adopting the `github` provider or rewriting `installed-update-*`.
 GitHub redirects that path to the newest published non-prerelease release, so feed names, macOS app-update.yml verification and the coordinator stay as they were; the COS `test`/`production` deployments remain selectable, and the `desktop-release.yml` workflow (not `upload:*`) publishes. Prereleases are invisible to installed apps, and only one `nightly-mac.yml` fits per release (CI builds mac arm64 only).
