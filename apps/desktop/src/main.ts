@@ -36,7 +36,7 @@ import { DesktopFatalRecovery } from './fatal-recovery.ts'
 import { pruneCrashReports, RendererConsoleTail, writeCrashReport, type CrashReportSource } from './crash-report.ts'
 import { openWelcomeWindow } from './welcome-window.ts'
 import { WELCOME_IPC, needsWelcome } from './welcome-api.ts'
-import { connectDesktopWelcome, type DesktopWelcomeBackend } from './welcome-backend.ts'
+import { checkDeepSeekApiKey, connectDesktopWelcome, type DesktopWelcomeBackend } from './welcome-backend.ts'
 import { DesktopUpdateJournal } from './update-journal.ts'
 import { DesktopUpdatePreparationError } from './update-error.ts'
 import { DesktopUpdateSchedule, resolveDesktopUpdateScheduleConfig } from './update-schedule.ts'
@@ -1042,12 +1042,18 @@ async function main(): Promise<void> {
         },
         saveApiKey: async (apiKey) => {
           if (backend.host === undefined || welcomeBackend === undefined) return { ok: false }
+          // Check the key with the provider first so a typo is reported on the form.
+          const check = await checkDeepSeekApiKey(apiKey, (input, init) => net.fetch(input, init))
+          if (check !== 'ok') return { ok: false, reason: check }
           const saved = await welcomeBackend.save(apiKey)
           if (!saved.ok) return saved
           await enterWorkspace()
           return { ok: true }
         },
         skip: enterWorkspace,
+        folderState: async path => welcomeBackend === undefined ? 'unknown' : welcomeBackend.folderState(path),
+        setUpFolder: async path => welcomeBackend === undefined ? { ok: false } : welcomeBackend.setUpFolder(path),
+        useFolder: async path => welcomeBackend === undefined ? { ok: false } : welcomeBackend.useFolder(path),
       })
       const window = welcomeWindow
       window.once('closed', () => {

@@ -1,9 +1,14 @@
 /** Desktop welcome presentation; account and credential operations stay in the preload. */
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import type { FormEvent } from 'react'
 import { StateDot } from '@deepseek-ai/dsh-client-ui-primitives/src/StateDot.tsx'
 import type { AccountView } from '@deepseek-ai/dsh-deepseek-account/types'
 import type { WelcomeApi } from '../welcome-api.ts'
+import { WelcomeOnboarding, type OnboardingState } from './welcome-onboarding.ts'
+
+const AUTH: OnboardingState = { page: 'auth' }
+const authSnapshot = (): OnboardingState => AUTH
+const noSubscription = (): (() => void) => () => {}
 
 type Page = 'entry' | 'key' | 'account'
 
@@ -31,6 +36,9 @@ export function Welcome({ api }: { api: WelcomeApi }) {
   const input = useRef<HTMLInputElement>(null)
   const keyButton = useRef<HTMLButtonElement>(null)
   const focusEntry = useRef(false)
+  const onboarding = useMemo(() => api.onboarding === undefined ? undefined : new WelcomeOnboarding(api.onboarding), [api])
+  const step = useSyncExternalStore(onboarding?.subscribe ?? noSubscription, onboarding?.getSnapshot ?? authSnapshot)
+  const onboardingActive = step.page !== 'auth'
 
   function navigate(next: Page) {
     pageRef.current = next
@@ -87,7 +95,8 @@ export function Welcome({ api }: { api: WelcomeApi }) {
       const result = await api.saveApiKey(value)
       if (!mounted.current) return
       if (result.ok) setDraft('')
-      else setError(m.welcomeKeyFailed)
+      else setError(result.reason === 'rejected' ? m.welcomeKeyRejected
+        : result.reason === 'unreachable' ? m.welcomeKeyUnreachable : m.welcomeKeyFailed)
     } catch {
       if (mounted.current) setError(m.welcomeKeyFailed)
     } finally {
@@ -153,13 +162,34 @@ export function Welcome({ api }: { api: WelcomeApi }) {
   const title = phase === 'initializing' ? m.welcomeAuthStarting
     : waiting ? m.welcomeAuthWaiting : phase === 'expired' ? m.welcomeAuthExpired
       : phase === 'failed' ? m.welcomeAuthFailed : m.welcomeAuthExchanging
-  const heading = page === 'entry' ? 'welcome-heading' : page === 'key' ? 'key-title' : 'auth-status'
+  const heading = step.page === 'folder' ? 'folder-title' : step.page === 'setup' ? 'setup-title'
+    : step.page === 'terminal' ? 'terminal-title'
+      : page === 'entry' ? 'welcome-heading' : page === 'key' ? 'key-title' : 'auth-status'
+  const setupWorking = step.page === 'setup' && step.phase === 'working'
+  const terminalBlocked = step.page === 'terminal' && step.status.blockedReason === 'translocated'
+  const terminalWorking = step.page === 'terminal' && step.phase === 'working'
 
   return <>
     <div className="titlebar" aria-hidden="true" />
     <main className="welcome" aria-labelledby={heading}>
       <img className="brand" src="assets/welcome-brand.svg" alt={m.welcomeBrand} width="472" height="40" />
-      <div id="tagline" className="tagline" hidden={page !== 'entry'}>
+      <section id="folder-page" className="key-heading" hidden={step.page !== 'folder'} aria-busy={step.page === 'folder' && step.busy}>
+        <h1 id="folder-title">{m.welcomeFolderTitle}</h1>
+        <p id="folder-description">{m.welcomeFolderDescription}</p>
+      </section>
+      <section id="setup-page" className="key-heading" hidden={step.page !== 'setup'} aria-live="polite">
+        <h1 id="setup-title">{m.welcomeFolderSetupTitle}</h1>
+        <p id="setup-folder">{step.page === 'setup' ? m.welcomeFolderSelected.replace('{name}', step.folder.name) : ''}</p>
+        <p id="setup-description">{m.welcomeFolderSetupDescription}</p>
+        <p id="setup-error" className="key-error" role="alert" hidden={step.page !== 'setup' || step.phase !== 'failed'}>{m.welcomeFolderFailed}</p>
+      </section>
+      <section id="terminal-page" className="key-heading" hidden={step.page !== 'terminal'} aria-live="polite">
+        <h1 id="terminal-title">{m.welcomeTerminalTitle}</h1>
+        <p id="terminal-description">{terminalBlocked ? m.welcomeTerminalTranslocated
+          : step.page === 'terminal' && step.phase === 'done' ? m.welcomeTerminalDone : m.welcomeTerminalDescription}</p>
+        <p id="terminal-error" className="key-error" role="alert" hidden={step.page !== 'terminal' || step.phase !== 'failed'}>{m.welcomeTerminalFailed}</p>
+      </section>
+      <div id="tagline" className="tagline" hidden={page !== 'entry' || onboardingActive}>
         <h1 id="welcome-heading"><span>{m.welcomeTaglineBefore}</span><em>{m.welcomeTaglineBrand}</em><span>{m.welcomeTaglineAfter}</span></h1>
         <p id="welcome-description">{m.welcomeDescription}</p>
       </div>
@@ -191,7 +221,30 @@ export function Welcome({ api }: { api: WelcomeApi }) {
           disabled={cancelling || phase === 'committing' || phase === 'succeeded' || (phase === 'initializing' && !attempt?.id)}
           onClick={() => { void cancel() }}>{m.welcomeAuthCancel}</button>
       </div>
-      <div id="entry-actions" className="actions" hidden={page !== 'entry'}>
+      <div id="folder-actions" className="actions" hidden={step.page !== 'folder'}>
+        <button id="choose-folder" className="primary" type="button" disabled={step.page === 'folder' && step.busy}
+          onClick={() => { void onboarding?.chooseFolder() }}>{m.welcomeFolderChoose}</button>
+        <button id="skip-folder" className="secondary" type="button" disabled={step.page === 'folder' && step.busy}
+          onClick={() => { void onboarding?.skipFolder() }}>{m.welcomeFolderLater}</button>
+      </div>
+      <div id="setup-actions" className="actions" hidden={step.page !== 'setup'}>
+        <button id="set-up-nexus" className="primary" type="button" disabled={setupWorking}
+          onClick={() => { void onboarding?.setUp() }}>{setupWorking ? m.welcomeFolderSettingUp : m.welcomeFolderSetup}</button>
+        <button id="skip-setup" className="secondary" type="button" disabled={setupWorking}
+          onClick={() => { void onboarding?.skipSetup() }}>{m.welcomeFolderSkipSetup}</button>
+        <button id="choose-another" className="back" type="button" disabled={setupWorking}
+          onClick={() => { onboarding?.chooseAnother() }}>{m.welcomeFolderChooseAnother}</button>
+      </div>
+      <div id="terminal-actions" className="actions" hidden={step.page !== 'terminal'}>
+        <button id="add-commands" className="primary" type="button"
+          hidden={terminalBlocked || (step.page === 'terminal' && step.phase === 'done')} disabled={terminalWorking}
+          onClick={() => { void onboarding?.addCommands() }}>{terminalWorking ? m.welcomeTerminalAdding : m.welcomeTerminalAdd}</button>
+        <button id="finish-terminal" className={terminalBlocked || (step.page === 'terminal' && step.phase === 'done') ? 'primary' : 'secondary'}
+          type="button" disabled={terminalWorking} onClick={() => { onboarding?.finishTerminal() }}>
+          {step.page === 'terminal' && (step.phase === 'done' || terminalBlocked) ? m.welcomeOnboardingContinue : m.welcomeTerminalSkip}
+        </button>
+      </div>
+      <div id="entry-actions" className="actions" hidden={page !== 'entry' || onboardingActive}>
         <button id="sign-in" className="primary" type="button" onClick={() => { void start() }}>{m.welcomeSignIn}</button>
         <button ref={keyButton} id="api-key" className="secondary" type="button" onClick={() => { navigate('key') }}>{m.welcomeApiKey}</button>
       </div>

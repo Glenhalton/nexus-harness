@@ -1,11 +1,11 @@
 import type { SignInAttemptId } from '@deepseek-ai/dsh-deepseek-account/types'
 /** Native welcome window and its presentation-only renderer. */
 
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { app, BrowserWindow, ipcMain, type BrowserWindowConstructorOptions, type IpcMainInvokeEvent } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, type BrowserWindowConstructorOptions, type IpcMainInvokeEvent } from 'electron'
 import type { DesktopLocale } from './locale.ts'
-import { WELCOME_IPC, type WelcomeOperations } from './welcome-api.ts'
+import { WELCOME_IPC, type WelcomeFolderChoice, type WelcomeOperations } from './welcome-api.ts'
 
 /**
  * Resolve the fixed-size welcome window's native material and controls.
@@ -63,7 +63,10 @@ export async function openWelcomeWindow(locale: DesktopLocale, operations: Welco
   const disposeHandlers = (): void => {
     if (!active) return
     active = false
-    for (const channel of [WELCOME_IPC.saveApiKey, WELCOME_IPC.skip, WELCOME_IPC.start, WELCOME_IPC.cancel, WELCOME_IPC.copyLink]) {
+    for (const channel of [
+      WELCOME_IPC.saveApiKey, WELCOME_IPC.skip, WELCOME_IPC.start, WELCOME_IPC.cancel, WELCOME_IPC.copyLink,
+      WELCOME_IPC.chooseFolder, WELCOME_IPC.setUpFolder, WELCOME_IPC.useFolder,
+    ]) {
       ipcMain.removeHandler(channel)
     }
     disposeActiveHandlers = undefined
@@ -93,6 +96,31 @@ export async function openWelcomeWindow(locale: DesktopLocale, operations: Welco
     assertSender(event)
     if (typeof id !== 'string') throw new Error('desktop welcome: invalid attempt')
     return operations.copySignInLink(id as SignInAttemptId)
+  })
+  // The renderer never names a path: folder actions apply to the folder this
+  // window's own native dialog returned last.
+  let picked: string | undefined
+  let choosing: Promise<WelcomeFolderChoice | null> | undefined
+  ipcMain.handle(WELCOME_IPC.chooseFolder, async (event) => {
+    assertSender(event)
+    choosing ??= (async () => {
+      const { canceled, filePaths } = await dialog.showOpenDialog(window, { properties: ['openDirectory', 'createDirectory'] })
+      const path = filePaths[0]
+      if (canceled || path === undefined || window.isDestroyed()) return null
+      picked = path
+      return { name: basename(path) || path, path, state: await operations.folderState(path) }
+    })().finally(() => { choosing = undefined })
+    return choosing
+  })
+  ipcMain.handle(WELCOME_IPC.setUpFolder, async (event) => {
+    assertSender(event)
+    if (picked === undefined) return { ok: false }
+    return operations.setUpFolder(picked)
+  })
+  ipcMain.handle(WELCOME_IPC.useFolder, async (event) => {
+    assertSender(event)
+    if (picked === undefined) return { ok: false }
+    return operations.useFolder(picked)
   })
   window.once('closed', disposeHandlers)
   window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
