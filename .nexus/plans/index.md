@@ -3,7 +3,7 @@ nexus_doc: true
 id: "plans_index"
 title: "NEXUS Plans Dashboard"
 status: auto
-generated_at: "2026-10-03"
+generated_at: "2026-10-05"
 ---
 
 # Plans Dashboard
@@ -14,9 +14,9 @@ generated_at: "2026-10-03"
 
 | ID | Title | Status | Owner | Updated | Phase |
 |----|-------|--------|-------|---------|-------|
-| [`desktop-app-rebrand-release-pipeline-and-nexus-on-path`](./desktop-app-rebrand-release-pipeline-and-nexus-on-path.md) | Desktop app rebrand, release pipeline, and nexus on PATH | 🟢 in_progress | nexus-implementer | 2026-10-03 | feature-delivery |
-| [`in-app-onboarding-for-non-technical-users`](./in-app-onboarding-for-non-technical-users.md) | In-app onboarding for non-technical users | 🟢 in_progress | nexus-implementer | 2026-10-03 | feature-delivery |
-| [`slim-the-npm-harness-package-and-expose-nexus-bin`](./slim-the-npm-harness-package-and-expose-nexus-bin.md) | Slim the npm harness package and expose nexus bin | 🟢 in_progress | nexus-implementer | 2026-10-03 | refactor |
+| [`desktop-app-rebrand-release-pipeline-and-nexus-on-path`](./desktop-app-rebrand-release-pipeline-and-nexus-on-path.md) | Desktop app rebrand, release pipeline, and nexus on PATH | 🟢 in_progress | nexus-implementer | 2026-10-05 | feature-delivery |
+| [`in-app-onboarding-for-non-technical-users`](./in-app-onboarding-for-non-technical-users.md) | In-app onboarding for non-technical users | 🟢 in_progress | nexus-implementer | 2026-10-05 | feature-delivery |
+| [`slim-the-npm-harness-package-and-expose-nexus-bin`](./slim-the-npm-harness-package-and-expose-nexus-bin.md) | Slim the npm harness package and expose nexus bin | 🟢 in_progress | nexus-implementer | 2026-10-05 | refactor |
 
 ## Approved
 
