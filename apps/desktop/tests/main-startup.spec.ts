@@ -10,12 +10,26 @@ import { DESKTOP_IPC, type DesktopUpdateState } from '../src/ipc.ts'
 import { MANDATORY_IPC } from '../src/mandatory-update-ipc.ts'
 import { DesktopHostFatalError, DesktopHostUncleanExitError } from '../src/host-process.ts'
 import { en } from '../src/locale.ts'
+import { TERMINAL_COMMANDS_IPC } from '../src/terminal-commands.ts'
+import { pathToFileURL } from 'node:url'
 import { DesktopUpdatePreparationError } from '../src/update-error.ts'
 import { writeCrashReport } from '../src/crash-report.ts'
 
 type InvokeEvent = { sender?: unknown; senderFrame: { url: string } }
 type InvokeHandler = (event: InvokeEvent, ...args: unknown[]) => unknown
 
+// Terminal-command shims have their own temporary-home tests; startup must never touch a real profile.
+vi.mock('../src/terminal-commands.ts', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../src/terminal-commands.ts')>()
+  const status = {
+    installed: false, binDir: 'desktop-test-home/.nexus/bin', commands: original.TERMINAL_COMMANDS, needsNewTerminal: false,
+  }
+  const operations = {
+    status: vi.fn(async () => status), install: vi.fn(async () => status),
+    remove: vi.fn(async () => status), ensure: vi.fn(async () => status),
+  }
+  return { ...original, configureTerminalCommands: vi.fn(() => operations) }
+})
 vi.mock('../src/web-document.ts', () => ({ authenticateWebHost: async () => 'test-cookie', serveWebDocument: vi.fn(), forwardWebRequest: vi.fn() }))
 // Report persistence has its own unit tests; here it resolves within microtasks so the fatal
 // dialog never outlives the test that triggered it.
@@ -438,7 +452,7 @@ describe('desktop main startup', () => {
     await vi.advanceTimersByTimeAsync(0)
     const zh = locale === 'zh-CN'
     expect(harness.dialog.showMessageBox).toHaveBeenLastCalledWith(expect.objectContaining({
-      type: 'info', title: zh ? '关于 DeepSeek Harness' : 'About DeepSeek Harness', message: 'DeepSeek Harness',
+      type: 'info', title: zh ? '关于 Nexus Harness' : 'About Nexus Harness', message: 'Nexus Harness',
       detail: zh ? '版本 V1.0.0' : 'Version V1.0.0', buttons: [zh ? '确定' : 'OK'], cancelId: 0,
     }))
     // A dialog that cannot open is logged, not surfaced as an unhandled rejection.
@@ -760,7 +774,7 @@ describe('desktop main startup', () => {
     expect(() => handler(event, 'application', NaN, 34)).toThrow('invalid popup request')
     const application = handler(event, 'application', 48, 34)
     expect(harness.menu.buildFromTemplate.mock.lastCall![0].map(item => item.label ?? item.type)).toEqual([
-      '关于 DeepSeek Harness', 'separator', '检查更新…', 'separator', '退出',
+      '关于 Nexus Harness', 'separator', '检查更新…', '将 nexus 添加到终端', 'separator', '退出',
     ])
     expect(harness.popup.mock.lastCall![0]).toMatchObject({ window, x: 48, y: 34 })
     expect(harness.popup.mock.lastCall![0].callback).toBeTypeOf('function')
@@ -797,8 +811,8 @@ describe('desktop main startup', () => {
       : ['Application', 'editMenu'])
     const application = template[0]!.submenu as MenuItemConstructorOptions[]
     expect(application.filter(item => item.visible !== false).map(describeItem)).toEqual(platform === 'darwin'
-      ? ['about', 'separator', en.checkUpdatesMenu, 'separator', 'hide', 'hideOthers', 'unhide', 'separator', 'quit']
-      : ['about', 'separator', en.checkUpdatesMenu, 'separator', 'quit'])
+      ? ['about', 'separator', en.checkUpdatesMenu, en.addTerminalCommandsMenu, 'separator', 'hide', 'hideOthers', 'unhide', 'separator', 'quit']
+      : ['about', 'separator', en.checkUpdatesMenu, en.addTerminalCommandsMenu, 'separator', 'quit'])
     expect(harness.menu.setApplicationMenu).toHaveBeenCalledOnce()
   })
 
@@ -817,6 +831,22 @@ describe('desktop main startup', () => {
         .toMatchFileSnapshot(`./expected/application-menu-${locale}.json`)
       expect(harness.app.name).toBe('@deepseek-ai/dsh-desktop')
     } finally { harness.app.name = originalName }
+  })
+
+  it('serves terminal-command IPC to the welcome window and Desktop documents but rejects foreign senders', async () => {
+    await import('../src/main.ts')
+    await harness.preparing.promise
+    const welcome = pathToFileURL(join(harness.app.getAppPath(), 'renderer', 'welcome.html')).href
+    for (const channel of [TERMINAL_COMMANDS_IPC.status, TERMINAL_COMMANDS_IPC.install, TERMINAL_COMMANDS_IPC.remove]) {
+      const handler = harness.handlers.get(channel)
+      if (handler === undefined) throw new Error(`missing handler ${channel}`)
+      for (const url of [welcome, `${welcome}?theme=dark`, 'dsh-app://app/index.html', 'dsh-app://shell/index.html']) {
+        await expect(Promise.resolve(handler({ senderFrame: { url } }))).resolves.toMatchObject({ commands: ['nexus', 'nexus-code'] })
+      }
+      for (const url of ['https://example.com/', 'file:///tmp/welcome.html', 'dsh-app://platform/index.html']) {
+        await expect(Promise.resolve().then(() => handler({ senderFrame: { url } }))).rejects.toThrow(/rejected IPC/u)
+      }
+    }
   })
 
   it('attaches Host socket credentials only to the owned application origin and window', async () => {

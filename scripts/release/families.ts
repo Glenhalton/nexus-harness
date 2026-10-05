@@ -35,6 +35,7 @@ const PEER_SECTIONS = ['peerDependencies'] as const
 
 /** The workspace root manifest, which is never a release member. */
 const WORKSPACE_ROOT_PACKAGE = '@deepseek-ai/dsh-root'
+const NEXUS_DISTRIBUTION_SCOPE = '@nexus-framework/'
 
 /** One peer declaration the publish order leaves unordered. */
 interface DroppedPeerEdge {
@@ -132,6 +133,8 @@ export abstract class ReleaseFamily {
       const name = requireString(manifest, 'name', normalized)
       const version = requireString(manifest, 'version', normalized)
       if (name === WORKSPACE_ROOT_PACKAGE) throw new Error(`${normalized} selected the workspace root`)
+      // The Nexus npm harness (`apps/nexus-harness`) ships through `package:harness`, not this release family.
+      if (name.startsWith(NEXUS_DISTRIBUTION_SCOPE)) continue
       if (!name.startsWith('@deepseek-ai/')) throw new Error(`${normalized} must name an @deepseek-ai package`)
       if (seen.has(name)) throw new Error(`${name} appears twice in release family ${this.id}`)
       seen.add(name)

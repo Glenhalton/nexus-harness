@@ -6,7 +6,9 @@ import { expect, it, vi } from 'vitest'
 
 const state = vi.hoisted(() => ({ root: '', directory: '' }))
 vi.mock('../scripts/desktop-package-environment.mjs', () => ({
-  loadDesktopPackageEnvironment: () => ({ DSH_DESKTOP_WINDOWS_TOKEN_PIN: 'credential-sentinel' }),
+  // Configured signers select the signed paths on both platforms.
+  loadDesktopPackageEnvironment: () => ({ DSH_DESKTOP_WINDOWS_TOKEN_PIN: 'credential-sentinel',
+    DSH_DESKTOP_MACOS_SIGNING_IDENTITY: 'Example Company (TEAMID1234)' }),
   validateDesktopPackageEnvironment: () => {},
 }))
 vi.mock('../scripts/macos-signing-keychain.mjs', () => ({

@@ -4,7 +4,8 @@ import type { AfterPackContext, BeforePackContext } from 'app-builder-lib'
 export interface DesktopElectronBuilderConfig {
   readonly appId: string
   readonly artifactName: string
-  readonly protocols: readonly [{ readonly name: 'DeepSeek Harness'; readonly schemes: readonly ['dsh'] }]
+  readonly protocols: readonly [{ readonly name: 'Nexus Harness'; readonly schemes: readonly ['dsh'] }]
+  readonly productName: 'Nexus Harness'
   readonly directories: {
     readonly output: string
   }
@@ -16,16 +17,23 @@ export interface DesktopElectronBuilderConfig {
     { readonly from: string, readonly to: 'dsh', readonly filter: readonly ['**/*'] },
     { readonly from: string, readonly to: 'dsh/node_modules', readonly filter: readonly ['**/*'] },
   ]
-  readonly extraMetadata: { readonly dshDesktopAppId: string }
+  readonly extraMetadata: {
+    readonly dshDesktopAppId: string
+    readonly dshMandatoryUpdatePolicy?: Readonly<Record<string, unknown>> | undefined
+    /** Set for ad-hoc signed macOS builds, which open the GitHub download page instead of installing updates. */
+    readonly nexusManualUpdates?: true
+  }
   readonly asarUnpack: readonly string[]
   readonly extraResources: readonly [
     { readonly from: string, readonly to: 'runtime' },
     { readonly from: string, readonly to: 'icon.png' },
+    ...{ readonly from: string, readonly to: 'terminal-commands.ps1' }[],
   ]
   readonly mac: {
     readonly extendInfo: { readonly NSMicrophoneUsageDescription: string }
     readonly identity: string | undefined
     readonly forceCodeSigning: boolean
+    readonly hardenedRuntime: boolean
     readonly notarize: boolean
     readonly signIgnore: readonly string[]
   }
@@ -39,6 +47,12 @@ export interface DesktopElectronBuilderConfig {
       readonly publisherName: string | undefined
       readonly sign: ((configuration: { path: string, hash: string, isNest: boolean }) => Promise<void>) | undefined
       readonly signingHashAlgorithms: readonly string[]
+    } | undefined
+    readonly azureSignOptions?: {
+      readonly publisherName: string
+      readonly endpoint: string
+      readonly codeSigningAccountName: string
+      readonly certificateProfileName: string
     }
   }
   readonly nsis: {

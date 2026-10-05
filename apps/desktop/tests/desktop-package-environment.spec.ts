@@ -7,7 +7,7 @@ import { resolveWindowsPackageSettings } from '../scripts/windows-package-settin
 
 const WINDOWS = { platform: 'win32', arch: 'x64' } as const
 const MACOS = { platform: 'darwin', arch: 'arm64' } as const
-const POLICY = { DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN: 'https://policy.example.com',
+const POLICY = { DSH_DESKTOP_AUTO_UPDATE_ENV: 'test', DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN: 'https://policy.example.com',
   DSH_DESKTOP_MANDATORY_UPDATE_CONFIG: JSON.stringify({ allowedAuthOrigins: ['https://login.example.com'] }) }
 const RELEASE = { ...POLICY, DSH_DESKTOP_APP_ID: 'com.example.desktop', DOWNLOAD_TEST_ORIGIN: 'https://updates.example.com',
   DOWNLOAD_TEST_RELEASE_ID: '0123456789abcdef0123456789abcdef' }
@@ -86,8 +86,10 @@ describe('Desktop local packaging configuration', () => {
       await writeFile(file, settings.replace(`DOWNLOAD_TEST_RELEASE_ID='${RELEASE.DOWNLOAD_TEST_RELEASE_ID}'\n`, ''))
       const missing = loadDesktopPackageEnvironment(platform, parent, directory)
       expect(missing.DOWNLOAD_TEST_RELEASE_ID).toBeUndefined()
+      // A configured signer selects the release path, whose update feed needs the release ID.
+      const signer = platform === 'win32' ? { DSH_DESKTOP_WINDOWS_SIGNTOOL: 'signtool.exe' } : MAC_IDENTITY
       expect(() => {
-        validateDesktopPackageEnvironment(missing, platform === 'win32' ? WINDOWS : MACOS)
+        validateDesktopPackageEnvironment({ ...missing, ...signer }, platform === 'win32' ? WINDOWS : MACOS)
       }).toThrow(/DOWNLOAD_TEST_RELEASE_ID/u)
       expect(parent.DOWNLOAD_TEST_RELEASE_ID).toBe('a'.repeat(32))
     })
@@ -126,11 +128,15 @@ describe('Desktop local packaging configuration', () => {
       validateDesktopPackageEnvironment({ DSH_DESKTOP_APP_ID: 'invalid' }, WINDOWS)
     }).toThrow(/reverse-DNS/u)
     expect(() => {
-      validateDesktopPackageEnvironment({ ...POLICY, DSH_DESKTOP_APP_ID: RELEASE.DSH_DESKTOP_APP_ID }, WINDOWS)
+      validateDesktopPackageEnvironment({ ...POLICY, DSH_DESKTOP_APP_ID: RELEASE.DSH_DESKTOP_APP_ID, DSH_DESKTOP_WINDOWS_SIGNTOOL: 'signtool.exe' }, WINDOWS)
     }).toThrow(/DOWNLOAD_TEST_ORIGIN/u)
     expect(() => {
-      validateDesktopPackageEnvironment(RELEASE, WINDOWS)
+      validateDesktopPackageEnvironment({ ...RELEASE, DSH_DESKTOP_WINDOWS_SIGNTOOL: 'signtool.exe' }, WINDOWS)
     }).toThrow(/DSH_DESKTOP_WINDOWS_CER_FILE/u)
+    // Without any signing settings the build is unsigned rather than rejected.
+    expect(() => {
+      validateDesktopPackageEnvironment({ ...RELEASE, DSH_DESKTOP_WINDOWS_CER_FILE: '', DSH_DESKTOP_WINDOWS_TOKEN_PIN: ' ' }, WINDOWS)
+    }).not.toThrow()
     expect(() => {
       validateDesktopPackageEnvironment({ ...POLICY, DSH_DESKTOP_APP_ID: RELEASE.DSH_DESKTOP_APP_ID }, WINDOWS, { unsigned: true })
     }).not.toThrow()
@@ -153,8 +159,12 @@ describe('Desktop local packaging configuration', () => {
 
   it('rejects incomplete macOS identity and credentials and checks referenced files without contacting Apple', async () => {
     expect(() => {
-      validateDesktopPackageEnvironment(RELEASE, MACOS)
+      validateDesktopPackageEnvironment({ ...RELEASE, CSC_LINK: 'developer-id.p12' }, MACOS)
     }).toThrow(/DSH_DESKTOP_MACOS_SIGNING_IDENTITY/u)
+    // Without any signing settings macOS packages an ad-hoc signed app instead of failing.
+    expect(() => {
+      validateDesktopPackageEnvironment({ ...RELEASE, DSH_DESKTOP_MACOS_SIGNING_IDENTITY: '', CSC_LINK: '', CSC_KEY_PASSWORD: '' }, MACOS)
+    }).not.toThrow()
     expect(() => {
       validateDesktopPackageEnvironment({ ...RELEASE, ...MAC_IDENTITY }, MACOS)
     }).toThrow(/macOS packaging requires/u)
@@ -200,5 +210,37 @@ it('owns macOS tuning in the local file and validates it before signing credenti
     expect(env.DSH_DESKTOP_MACOS_NOTARIZATION_PROXY).toBe('')
     expect(() =>{  validateDesktopPackageEnvironment({ ...RELEASE, DSH_DESKTOP_MACOS_PACK_CONCURRENCY: '' }, MACOS) }).toThrow('PACK_CONCURRENCY')
     expect(() =>{  validateDesktopPackageEnvironment({ ...RELEASE, DSH_DESKTOP_MACOS_NOTARIZATION_PROXY: 'socks5://localhost:8080' }, MACOS) }).toThrow('NOTARIZATION_PROXY')
+  })
+})
+
+describe('Azure Trusted Signing configuration', () => {
+  const AZURE = {
+    AZURE_TENANT_ID: 'tenant', AZURE_CLIENT_ID: 'client', AZURE_CLIENT_SECRET: 'secret',
+    AZURE_TRUSTED_SIGNING_ENDPOINT: 'https://eus.codesigning.azure.net/',
+    AZURE_TRUSTED_SIGNING_ACCOUNT: 'gda', AZURE_TRUSTED_SIGNING_PROFILE: 'nexus',
+  }
+  const GITHUB = { DSH_DESKTOP_APP_ID: 'com.example.desktop' }
+
+  it('accepts a complete Azure configuration without token settings', () => {
+    expect(() => { validateDesktopPackageEnvironment({ ...GITHUB, ...AZURE }, WINDOWS) }).not.toThrow()
+  })
+
+  it('rejects partial Azure settings and mixing Azure with the token signer', () => {
+    expect(() => { validateDesktopPackageEnvironment({ ...GITHUB, ...AZURE, AZURE_CLIENT_SECRET: '' }, WINDOWS) }).toThrow(/AZURE_CLIENT_SECRET/u)
+    expect(() => { validateDesktopPackageEnvironment({ ...GITHUB, ...AZURE, AZURE_TRUSTED_SIGNING_ENDPOINT: 'http://x' }, WINDOWS) })
+      .toThrow(/HTTPS/u)
+    expect(() => { validateDesktopPackageEnvironment({ ...GITHUB, ...AZURE, DSH_DESKTOP_WINDOWS_SIGNTOOL: 'signtool.exe' }, WINDOWS) })
+      .toThrow(/not both/u)
+  })
+
+  it('loads Azure settings only from the Windows file', async () => {
+    await withDirectory(async (directory) => {
+      await writeFile(join(directory, '.env.windows'), 'AZURE_TENANT_ID=from-file\n')
+      const loaded = loadDesktopPackageEnvironment('win32', { AZURE_CLIENT_SECRET: 'ambient' }, directory)
+      expect(loaded.AZURE_TENANT_ID).toBe('from-file')
+      expect(loaded.AZURE_CLIENT_SECRET).toBeUndefined()
+      await writeFile(join(directory, '.env.macos'), 'AZURE_TENANT_ID=from-file\n')
+      expect(() => loadDesktopPackageEnvironment('darwin', {}, directory)).toThrow(/unsupported setting AZURE_TENANT_ID/u)
+    })
   })
 })

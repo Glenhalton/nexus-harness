@@ -1,11 +1,28 @@
-/** Resolve the Desktop auto-update channel and its Tencent COS destination. */
+/**
+ * Resolve the Desktop auto-update channel and its destination.
+ *
+ * `github` (the default) serves the fixed Nightly feed from the latest GitHub Release of
+ * GDA-Africa/nexus-harness through GitHub's `releases/latest/download/` redirect, so the packaged
+ * generic provider, feed filenames and verification stay unchanged. `test` and `production` keep the
+ * inherited Tencent COS deployments for operators who still run them.
+ */
 
 import { valid } from 'semver'
 
 /** Environment variable that selects the Desktop update deployment. */
 export const DESKTOP_AUTO_UPDATE_ENV = 'DSH_DESKTOP_AUTO_UPDATE_ENV'
 
+/** Repository whose GitHub Releases host Nexus Harness installers and update feeds. */
+export const DESKTOP_GITHUB_REPOSITORY = 'GDA-Africa/nexus-harness'
+
 const UPDATE_ENVIRONMENTS = {
+  github: {
+    originEnvName: undefined,
+    fixedOrigin: 'https://github.com',
+    bucketEnvName: undefined,
+    secretIdEnvName: undefined,
+    secretKeyEnvName: undefined,
+  },
   test: {
     originEnvName: 'DOWNLOAD_TEST_ORIGIN',
     fixedOrigin: undefined,
@@ -25,14 +42,14 @@ const UPDATE_ENVIRONMENTS = {
 const UPDATE_TARGETS = new Set(['mac-arm64', 'mac-x64', 'win-x64'])
 
 /**
- * Resolve the update deployment, defaulting local release work to test.
+ * Resolve the update deployment, defaulting to GitHub Releases.
  * @param {NodeJS.ProcessEnv} env - Packaging or upload environment.
- * @returns {'test' | 'production'} Validated deployment name.
+ * @returns {'github' | 'test' | 'production'} Validated deployment name.
  */
 export function resolveDesktopAutoUpdateEnvironment(env) {
-  const value = env[DESKTOP_AUTO_UPDATE_ENV]?.trim() || 'test'
-  if (value !== 'test' && value !== 'production') {
-    throw new Error(`desktop auto-update: ${DESKTOP_AUTO_UPDATE_ENV} must be "test" or "production"`)
+  const value = env[DESKTOP_AUTO_UPDATE_ENV]?.trim() || 'github'
+  if (value !== 'github' && value !== 'test' && value !== 'production') {
+    throw new Error(`desktop auto-update: ${DESKTOP_AUTO_UPDATE_ENV} must be "github", "test" or "production"`)
   }
   return value
 }
@@ -124,7 +141,7 @@ function httpsOrigin(value, name) {
  * @param {NodeJS.ProcessEnv} env - Packaging or upload environment.
  * @param {NodeJS.Platform} platform - Target Node.js platform.
  * @param {string} arch - Target Node.js architecture.
- * @returns {{ environment: 'test' | 'production', target: 'mac-arm64' | 'mac-x64' | 'win-x64', origin: string, publicUrl: string, keyPrefix: string, binaryKeyPrefix: string }} Resolved updater configuration.
+ * @returns {{ environment: 'github' | 'test' | 'production', target: 'mac-arm64' | 'mac-x64' | 'win-x64', origin: string, publicUrl: string, keyPrefix: string, binaryKeyPrefix: string }} Resolved updater configuration.
  * @throws {Error} When the test deployment lacks a valid HTTPS origin or a 32-character lowercase hexadecimal release ID.
  */
 export function resolveDesktopAutoUpdateConfig(env, platform, arch) {
@@ -136,6 +153,10 @@ export function resolveDesktopAutoUpdateConfig(env, platform, arch) {
     const { originEnvName } = deployment
     if (originEnvName === undefined) throw new Error('desktop auto-update: selected deployment has no origin')
     origin = httpsOrigin(requiredEnvironmentValue(env, originEnvName), originEnvName)
+  }
+  if (environment === 'github') {
+    const keyPrefix = `${DESKTOP_GITHUB_REPOSITORY}/releases/latest/download`
+    return { environment, target, origin, keyPrefix, binaryKeyPrefix: keyPrefix, publicUrl: `${origin}/${keyPrefix}/` }
   }
   let releasePrefix = 'dsh-desk'
   if (environment === 'test') {
@@ -161,11 +182,14 @@ export function resolveDesktopAutoUpdateConfig(env, platform, arch) {
  * @param {NodeJS.ProcessEnv} env - Upload environment.
  * @param {NodeJS.Platform} platform - Target Node.js platform.
  * @param {string} arch - Target Node.js architecture.
- * @returns {{ environment: 'test' | 'production', target: 'mac-arm64' | 'mac-x64' | 'win-x64', origin: string, publicUrl: string, keyPrefix: string, binaryKeyPrefix: string, bucket: string, secretIdEnvName: string, secretKeyEnvName: string }} Resolved upload configuration.
+ * @returns {{ environment: 'github' | 'test' | 'production', target: 'mac-arm64' | 'mac-x64' | 'win-x64', origin: string, publicUrl: string, keyPrefix: string, binaryKeyPrefix: string, bucket: string, secretIdEnvName: string, secretKeyEnvName: string }} Resolved upload configuration.
  * @throws {Error} When the selected deployment lacks a bucket or valid updater configuration.
  */
 export function resolveDesktopUploadConfig(env, platform, arch) {
   const update = resolveDesktopAutoUpdateConfig(env, platform, arch)
+  if (update.environment === 'github') {
+    throw new Error('desktop upload: GitHub Releases are published by the desktop-release workflow (.github/workflows/desktop-release.yml), not by upload:*')
+  }
   const deployment = UPDATE_ENVIRONMENTS[update.environment]
   return {
     ...update,

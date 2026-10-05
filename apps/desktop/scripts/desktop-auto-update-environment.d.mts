@@ -1,8 +1,11 @@
+/** Repository whose GitHub Releases host installers and update feeds. */
+export const DESKTOP_GITHUB_REPOSITORY: 'GDA-Africa/nexus-harness'
+
 /** Environment variable that selects the Desktop update deployment. */
 export const DESKTOP_AUTO_UPDATE_ENV: 'DSH_DESKTOP_AUTO_UPDATE_ENV'
 
 /** Supported Desktop update deployment. */
-export type DesktopAutoUpdateEnvironment = 'test' | 'production'
+export type DesktopAutoUpdateEnvironment = 'github' | 'test' | 'production'
 
 /** Directory name of one supported Desktop release target. */
 export type DesktopAutoUpdateTarget = 'mac-arm64' | 'mac-x64' | 'win-x64'
@@ -18,14 +21,16 @@ export interface DesktopAutoUpdateConfig {
 }
 
 /** Public updater URL and private COS destination for one upload target. */
-export interface DesktopUploadConfig extends DesktopAutoUpdateConfig {
+export interface DesktopUploadConfig extends Omit<DesktopAutoUpdateConfig, 'environment'> {
+  /** GitHub Releases publish through the release workflow, never through COS uploads. */
+  readonly environment: 'test' | 'production'
   readonly bucket: string
   readonly secretIdEnvName: string
   readonly secretKeyEnvName: string
 }
 
 /**
- * Resolve the update deployment, defaulting local release work to test.
+ * Resolve the update deployment, defaulting to GitHub Releases.
  * @param env - Packaging or upload environment.
  * @returns Validated deployment name.
  */
@@ -82,7 +87,7 @@ export function resolveDesktopAutoUpdateConfig(
  * @param platform - Target Node.js platform.
  * @param arch - Target Node.js architecture.
  * @returns Resolved upload configuration.
- * @throws When the selected deployment lacks a bucket or valid updater configuration.
+ * @throws When the selected deployment lacks a bucket or valid updater configuration, or publishes through GitHub Releases.
  */
 export function resolveDesktopUploadConfig(
   env: NodeJS.ProcessEnv,

@@ -8,16 +8,20 @@ import { smokePreparedRuntime } from './smoke-prepared-runtime.ts'
 import { resolveDesktopPackageTarget } from './package-target.ts'
 
 const paths = resolveDesktopTargetBuildPaths()
-const { values } = parseArgs({ options: { unsigned: { type: 'boolean', default: false } }, allowPositionals: false })
+// --unsigned reads the unsigned output directory; --external-signatures (Azure Trusted Signing) keeps the
+// release directory but skips the token signer's per-file Authenticode audit.
+const { values } = parseArgs({ options: {
+  'unsigned': { type: 'boolean', default: false },
+  'external-signatures': { type: 'boolean', default: false },
+}, allowPositionals: false })
 const target = resolveDesktopBuildTarget()
 const windows = target === 'win-x64'
-if (values.unsigned && !windows) throw new Error('desktop smoke: unsigned artifacts require Windows')
 const artifacts = values.unsigned ? paths.unsignedArtifacts : paths.artifacts
 const application = windows ? join(artifacts, 'win-unpacked')
-  : join(artifacts, target === 'mac-arm64' ? 'mac-arm64' : 'mac', 'DeepSeek Harness.app', 'Contents')
+  : join(artifacts, target === 'mac-arm64' ? 'mac-arm64' : 'mac', 'Nexus Harness.app', 'Contents')
 const resources = join(application, windows ? 'resources' : 'Resources')
-const executable = windows ? join(application, 'DeepSeek Harness.exe') : join(application, 'MacOS', 'DeepSeek Harness')
+const executable = windows ? join(application, 'Nexus Harness.exe') : join(application, 'MacOS', 'Nexus Harness')
 const descriptor = await verifyDesktopRuntime(paths.dsh, readDesktopRuntime(paths.dsh).release.version,
   resolveDesktopPackageTarget(target))
-if (windows && !values.unsigned) await verifyWindowsCode(application)
+if (windows && !values.unsigned && !values['external-signatures']) await verifyWindowsCode(application)
 await smokePreparedRuntime(join(resources, 'app.asar', 'dsh'), executable, join(resources, 'runtime'), descriptor)

@@ -3,6 +3,7 @@
 import { packagingStep } from './packaging-step.mjs'
 import { spawn } from 'node:child_process'
 import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { delimiter, join, relative, resolve } from 'node:path'
 import { desktopNodeEnvironment } from '../src/node-environment.ts'
@@ -27,6 +28,7 @@ import {
   resolveNpmRegistry,
 } from './desktop-release-environment.mjs'
 import {
+  adHocSignMacOSRuntime,
   signMacOSRuntime,
 } from './macos-runtime.ts'
 import { resolveDesktopBuildTarget, resolveDesktopTargetBuildPaths } from './desktop-build-paths.mjs'
@@ -50,9 +52,34 @@ function manifestVersion(path: string, subject: string): string {
   return manifest.version
 }
 
+/** NEXUS brain CLI shipped beside dsh so the `nexus` terminal command needs no separate install. */
+const NEXUS_CLI_PACKAGE = '@nexus-framework/cli'
+
+/**
+ * The @nexus-framework/cli version the workspace already resolves for the NEXUS brain tools.
+ * @returns Exact version pinned into the Desktop runtime.
+ */
+function nexusCliVersion(): string {
+  const owner = resolve(APP_ROOT, '..', '..', 'packages', 'experimental', 'tool-nexus-brain', 'package.json')
+  return manifestVersion(createRequire(owner).resolve(`${NEXUS_CLI_PACKAGE}/package.json`), NEXUS_CLI_PACKAGE)
+}
+
+/**
+ * Add the NEXUS CLI to the runtime project before the lockfile is resolved.
+ * @param projectDir - Temporary runtime project.
+ * @param version - Exact registry version.
+ */
+function addNexusCli(projectDir: string, version: string): void {
+  const path = join(projectDir, 'package.json')
+  const manifest = JSON.parse(readFileSync(path, 'utf8')) as { dependencies?: Record<string, string> }
+  manifest.dependencies = { ...manifest.dependencies, [NEXUS_CLI_PACKAGE]: version }
+  writeFileSync(path, `${JSON.stringify(manifest, undefined, 2)}\n`)
+}
+
 function desktopRelease(): DesktopRelease {
   const version = manifestVersion(join(APP_ROOT, 'package.json'), 'desktop package')
-  const dshVersion = manifestVersion(resolve(APP_ROOT, '..', '..', 'package.json'), 'root dsh package')
+  // The workspace root carries the npm harness identity; the dsh CLI package owns the release version.
+  const dshVersion = manifestVersion(resolve(APP_ROOT, '..', 'cli', 'package.json'), '@deepseek-ai/dsh package')
   if (version !== dshVersion) {
     throw new Error(`desktop runtime: Electron ${version} must bind the same version of @deepseek-ai/dsh, found ${dshVersion}`)
   }
@@ -117,10 +144,12 @@ async function main(): Promise<void> {
       mkdirSync(STORE_ROOT, { recursive: true })
     })
     const release = desktopRelease()
+    const nexusCli = nexusCliVersion()
     await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'runtime:stage-packages', async () => {
       copyFileSync(join(PACKAGE_SET_ROOT, DESKTOP_PACKAGE_SET_FILE), join(BUILD_ROOT, DESKTOP_PACKAGE_SET_FILE))
       cpSync(join(PACKAGE_SET_ROOT, DESKTOP_PACKAGES_DIR), join(BUILD_ROOT, DESKTOP_PACKAGES_DIR), { recursive: true })
       createRuntimeProjectMetadata(BUILD_ROOT, release)
+      addNexusCli(BUILD_ROOT, nexusCli)
     })
     await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'runtime:lockfile', () => runPnpm(['install', '--lockfile-only']))
     verifyDesktopCoreLockfile(
@@ -143,17 +172,29 @@ async function main(): Promise<void> {
     })
     writeFileSync(join(DSH_OUTPUT_ROOT, 'package.json'), `${JSON.stringify({
       name: '@deepseek-ai/dsh-desktop-runtime', private: true, version: release.version, type: 'module',
-      dependencies: Object.fromEntries(packageSet.packages.map(entry => [entry.name, entry.version])),
+      dependencies: {
+        ...Object.fromEntries(packageSet.packages.map(entry => [entry.name, entry.version])),
+        [NEXUS_CLI_PACKAGE]: nexusCli,
+      },
     }, undefined, 2)}\n`)
     for (const file of DESKTOP_HOST_RUNTIME_FILES) {
       if (!existsSync(join(DSH_OUTPUT_ROOT, 'node_modules', DESKTOP_HOST_PACKAGE, file))) {
         throw new Error(`desktop runtime: missing private Host file ${file}`)
       }
     }
+    // Terminal shims (src/terminal-commands.ts) run these entries from the packaged runtime.
+    for (const entry of [['@nexus-framework', 'cli', 'bin', 'nexus.js'], ['@deepseek-ai', 'dsh', 'lib', 'bin.js']]) {
+      if (!existsSync(join(DSH_OUTPUT_ROOT, 'node_modules', ...entry))) {
+        throw new Error(`desktop runtime: missing terminal command entry ${entry.join('/')}`)
+      }
+    }
     if (!existsSync(join(DSH_OUTPUT_ROOT, 'node_modules', '@deepseek-ai', `libreoffice-kit-${officeEngine}`, 'prebuilds.json'))) {
       throw new Error(`desktop runtime: missing required LibreOffice engine ${officeEngine}`)
     }
-    if (process.platform === 'darwin') {
+    if (process.platform === 'darwin' && process.env.DSH_DESKTOP_UNSIGNED === '1') {
+      await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'sign:dsh-native-ad-hoc', () => adHocSignMacOSRuntime(DSH_OUTPUT_ROOT, resolveDesktopAppId(process.env)))
+      await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'sign:primary-native-ad-hoc', () => adHocSignMacOSRuntime(join(RUNTIME_ROOT, 'primary-runtime'), resolveDesktopAppId(process.env)))
+    } else if (process.platform === 'darwin') {
       await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'sign:dsh-native', () => signMacOSRuntime(DSH_OUTPUT_ROOT, resolveDesktopAppId(process.env), resolveMacOSSigningEnvironment(process.env), join(BUILD_PATHS.root, 'signature-cache')))
       await packagingStep(process.env.DSH_DESKTOP_PACKAGING_RUN_DIR, 'sign:primary-native', () => signMacOSRuntime(join(RUNTIME_ROOT, 'primary-runtime'), resolveDesktopAppId(process.env), resolveMacOSSigningEnvironment(process.env), join(BUILD_PATHS.root, 'signature-cache')))
     }

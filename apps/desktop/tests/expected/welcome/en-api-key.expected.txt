@@ -1,7 +1,7 @@
-DeepSeek Harness
-DeepSeek Harness
+Nexus Harness
+Nexus Harness
 Add an API key to get started
-Configure official DeepSeek models to start using Harness
+Add a DeepSeek API key to start using Nexus Harness
 Enter API key [password]
 Save and continue [disabled]
 Set up later

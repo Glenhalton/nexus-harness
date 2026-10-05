@@ -1,6 +1,25 @@
-# DeepSeek Harness 桌面端
+# Nexus Harness 桌面端
 
 [English](README.md) | 中文
+
+## Nexus Harness 分发
+
+本分支以 **Nexus Harness** 发布桌面端（`productName`、安装程序文案，以及由 `scripts/render-brand-assets.mjs` 根据 `ui-brand-nexus` 标志渲染的图标）。内部 `@deepseek-ai/*` 包名、`dsh-app://` 协议和 `$DSH_HOME` 目录结构保持不变。下文提到 DeepSeek Harness、COS 或 SafeNet 令牌的章节描述的是继承下来的发布路径，显式选择时仍然可用。
+
+**发布与更新。** `DSH_DESKTOP_AUTO_UPDATE_ENV` 默认为 `github`：打包后的应用继续使用 electron-updater 的 generic 提供方和固定的 Nightly 渠道，指向 `https://github.com/GDA-Africa/nexus-harness/releases/latest/download/`，GitHub 会将其重定向到最新的已发布、非预发布版本。该部署不嵌入强制更新策略服务。`.github/workflows/desktop-release.yml` 在 `desktop-v<version>` 标签上构建 macOS arm64 和 Windows x64（标签必须与 `apps/desktop/package.json` 的版本一致），并将安装包、ZIP、blockmap 和 `nightly*.yml` 上传到该版本。`upload:*` 拒绝 `github` 部署。dsh 基础版本取自 `apps/cli/package.json`，因为工作区根目录现在承载 npm harness 的身份。
+
+**签名。** 每个目标的 dotenv 文件决定签名模式（`scripts/desktop-signing-mode.mjs`）：
+
+| 已配置的设置 | 模式 | 结果 |
+|---|---|---|
+| 无（全部为空）或 `--unsigned` | unsigned | macOS：ad-hoc 签名、未公证、产物名带 `-unsigned`、关闭 hardened runtime；Windows：无 Authenticode 签名 |
+| macOS Developer ID / 公证设置 | signed | 继承的 Developer ID 加公证路径 |
+| `.env.windows` 中全部六个 `AZURE_*` 设置 | azure | electron-builder `azureSignOptions`；发布者默认为 `GDA Africa`（`AZURE_TRUSTED_SIGNING_PUBLISHER_NAME`） |
+| `DSH_DESKTOP_WINDOWS_*` 令牌设置 | signed | 继承的 SafeNet 令牌路径 |
+
+不完整的配置仍会校验失败，因此拼写错误不会悄悄去掉签名。未签名的 Windows 构建保留 GitHub 更新源并正常更新。Squirrel.Mac 只安装由同一 Developer ID 签名的更新，因此 ad-hoc macOS 构建带有 `nexusManualUpdates`：发现更新时打开 GitHub Releases 页面，而不是下载。
+
+**终端命令。** 打包的运行时在 `@deepseek-ai/dsh` 旁边捆绑 `@nexus-framework/cli`（固定为工作区解析到的版本）。[`src/terminal-commands.ts`](src/terminal-commands.ts) 在 `~/.nexus/bin` 写入 `nexus` 和 `nexus-code` 脚本，它们以 `ELECTRON_RUN_AS_NODE=1` 运行应用自带的 Electron 可执行文件，因此无需系统 Node.js；并在 `~/.zprofile` 和 `~/.bashrc` 中以一个带标记的块把该目录加入 `PATH`（Windows：HKCU 下的用户 `Path`）。打包应用启动时会刷新这些脚本，除非用户已移除；应用菜单提供 **将 nexus 添加到终端** / **从终端移除 nexus**，渲染进程可调用 `nexus:terminal-commands:status|install|remove`。在 macOS 上，从 App Translocation 或已挂载磁盘映像运行的副本会报告 `blockedReason: 'translocated'`，且不写入任何内容。NSIS 安装程序在全新安装和卸载时运行 `installer/terminal-commands.ps1`；原地更新不改动这些命令。
 
 桌面应用是完整 dsh Web 应用外的一层 Electron 壳。Electron RunAsNode 子进程启动共享 profile runner，Electron 立即从 `dsh-app://app/` 加载打包内的 Web 入口。共享加载页等待 Host 启动注入，然后在同一文档中启动客户端。Electron 将应用 HTTP 请求转发给已认证的 Web Host，转发时丢弃描述 Node fetch 连接而非资源本身的响应头（`transfer-encoding`、`connection`、`keep-alive`），并把插件 bundle 响应标记为 `no-store`，因为其每次启动都变化的 revision 只会在 Chromium 磁盘缓存中累积；WebSocket 流连接到该 Host，仅为归属的应用窗口附加凭据。Node IPC 承载启动注入、就绪与关闭。Desktop 默认使用端口 `19387`，与 Web 的 `3080` 分开；可通过 `webserver.config.port` patch 覆盖。
 

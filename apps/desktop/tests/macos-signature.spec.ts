@@ -13,6 +13,7 @@ import {
 
 const RELEASE_ENVIRONMENT = {
   DSH_DESKTOP_APP_ID: 'com.example.desktop',
+  DSH_DESKTOP_AUTO_UPDATE_ENV: 'test',
   DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN: 'https://policy.example.com',
   DSH_DESKTOP_MANDATORY_UPDATE_CONFIG: JSON.stringify({ allowedAuthOrigins: ['https://login.example.com'] }),
   DSH_DESKTOP_TARGET_PLATFORM: 'darwin',
@@ -41,7 +42,7 @@ describe('desktop macOS release signature', () => {
   it('loads release identifiers from the environment and requires code signing', async () => {
     const { createElectronBuilderConfig } = await import('../electron-builder.config.mjs')
     const config = createElectronBuilderConfig(RELEASE_ENVIRONMENT, 'darwin', 'arm64')
-    expect(config.protocols).toEqual([{ name: 'DeepSeek Harness', schemes: ['dsh'] }])
+    expect(config.protocols).toEqual([{ name: 'Nexus Harness', schemes: ['dsh'] }])
     expect(portablePath(config.directories.output)).toContain('/.desktop-build/targets/mac-arm64/artifacts')
     expect(config.mac.extendInfo.NSMicrophoneUsageDescription).toContain('microphone')
     expect(config.extraResources).toHaveLength(2)
@@ -111,6 +112,7 @@ describe('desktop macOS release signature', () => {
       DSH_DESKTOP_APP_ID: RELEASE_ENVIRONMENT.DSH_DESKTOP_APP_ID,
       DSH_DESKTOP_MANDATORY_UPDATE_TEST_ORIGIN: 'https://policy.example.com',
       DSH_DESKTOP_MANDATORY_UPDATE_CONFIG: JSON.stringify({ allowedAuthOrigins: ['https://login.example.com'] }),
+      DSH_DESKTOP_AUTO_UPDATE_ENV: 'test',
       DSH_DESKTOP_TARGET_PLATFORM: 'win32',
       DSH_DESKTOP_UNSIGNED: '1',
     }, 'win32', 'x64')
@@ -122,10 +124,46 @@ describe('desktop macOS release signature', () => {
     })
   })
 
-  it('rejects unsigned macOS builds and malformed signing modes', async () => {
+  it('ad-hoc signs unsigned macOS builds and links updates to the GitHub download page', async () => {
     const { createElectronBuilderConfig } = await import('../electron-builder.config.mjs')
-    expect(() => createElectronBuilderConfig({ ...RELEASE_ENVIRONMENT, DSH_DESKTOP_UNSIGNED: '1' }))
-      .toThrow(/unsigned builds require Windows/u)
+    const config = createElectronBuilderConfig({
+      DSH_DESKTOP_APP_ID: RELEASE_ENVIRONMENT.DSH_DESKTOP_APP_ID,
+      DSH_DESKTOP_TARGET_PLATFORM: 'darwin',
+      DSH_DESKTOP_TARGET_ARCH: 'arm64',
+      DSH_DESKTOP_UNSIGNED: '1',
+    }, 'darwin', 'arm64')
+    expect(config).toMatchObject({
+      productName: 'Nexus Harness',
+      mac: { identity: '-', hardenedRuntime: false, notarize: false },
+      dmg: { sign: false },
+      extraMetadata: { nexusManualUpdates: true },
+      publish: [{ provider: 'generic', channel: 'nightly',
+        url: 'https://github.com/GDA-Africa/nexus-harness/releases/latest/download/' }],
+    })
+    expect(config.extraMetadata.dshMandatoryUpdatePolicy).toBeUndefined()
+    expect(portablePath(config.directories.output)).toContain('/targets/mac-arm64/unsigned-artifacts')
+    expect(config.artifactName).toBe('nexus-harness-${version}-${os}-${arch}-unsigned.${ext}')
+  })
+
+  it('keeps the GitHub feed for unsigned Windows builds and signs with Azure when configured', async () => {
+    const { createElectronBuilderConfig } = await import('../electron-builder.config.mjs')
+    const base = { DSH_DESKTOP_APP_ID: RELEASE_ENVIRONMENT.DSH_DESKTOP_APP_ID, DSH_DESKTOP_TARGET_PLATFORM: 'win32' }
+    const unsigned = createElectronBuilderConfig({ ...base, DSH_DESKTOP_UNSIGNED: '1' }, 'win32', 'x64')
+    expect(unsigned.publish).toEqual([{ provider: 'generic', channel: 'nightly',
+      url: 'https://github.com/GDA-Africa/nexus-harness/releases/latest/download/' }])
+    expect(unsigned.extraMetadata.nexusManualUpdates).toBeUndefined()
+    expect(unsigned.extraResources.map((entry: { to: string }) => entry.to)).toContain('terminal-commands.ps1')
+    const azure = createElectronBuilderConfig({ ...base, DSH_DESKTOP_UNSIGNED: '0',
+      AZURE_TENANT_ID: 't', AZURE_CLIENT_ID: 'c', AZURE_CLIENT_SECRET: 's',
+      AZURE_TRUSTED_SIGNING_ENDPOINT: 'https://eus.codesigning.azure.net', AZURE_TRUSTED_SIGNING_ACCOUNT: 'gda',
+      AZURE_TRUSTED_SIGNING_PROFILE: 'nexus' }, 'win32', 'x64')
+    expect(azure.win).toMatchObject({ forceCodeSigning: true, signtoolOptions: undefined, azureSignOptions: {
+      publisherName: 'GDA Africa', endpoint: 'https://eus.codesigning.azure.net', codeSigningAccountName: 'gda', certificateProfileName: 'nexus' } })
+    expect(portablePath(azure.directories.output)).toContain('/targets/win-x64/artifacts')
+  })
+
+  it('rejects malformed signing modes', async () => {
+    const { createElectronBuilderConfig } = await import('../electron-builder.config.mjs')
     expect(() => createElectronBuilderConfig({ ...RELEASE_ENVIRONMENT, DSH_DESKTOP_UNSIGNED: 'yes' }))
       .toThrow(/must be 0 or 1/u)
   })

@@ -24,10 +24,12 @@ import { suggestDesktopBuildVersion } from './desktop-build-version-discovery.ts
 import { desktopBuildCommitEnvironment, readDesktopBuildCommit, resolveDesktopBuildCommit } from './desktop-build-commit.mjs'
 import { requireDesktopToolchain } from './desktop-toolchain-preflight.ts'
 import { withMacOSNotarizationProxy } from './macos-notarization-proxy.ts'
+import { AZURE_PUBLISHER_NAME_SETTING, AZURE_SIGNING_SETTINGS, resolveDesktopSigningMode, type DesktopSigningMode } from './desktop-signing-mode.mjs'
 
 const APP_ROOT = resolve(import.meta.dirname, '..')
 const REPOSITORY_ROOT = resolve(APP_ROOT, '..', '..')
 const WINDOWS_SIGNING_ENV_PREFIX = 'DSH_DESKTOP_WINDOWS_'
+const AZURE_SIGNING_ENV_PREFIX = 'AZURE_'
 const WINDOWS_SIGNING_ENV_NAMES = [
   'DSH_DESKTOP_WINDOWS_CER_FILE',
   'DSH_DESKTOP_WINDOWS_KEY_CONTAINER',
@@ -89,7 +91,7 @@ const TARGETS: Record<DesktopPackageTargetName, DesktopPackageTarget> = {
  */
 export function withoutWindowsSigningEnvironment(environment: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return Object.fromEntries(Object.entries(environment)
-    .filter(([name]) => !name.startsWith(WINDOWS_SIGNING_ENV_PREFIX)))
+    .filter(([name]) => !name.startsWith(WINDOWS_SIGNING_ENV_PREFIX) && !name.startsWith(AZURE_SIGNING_ENV_PREFIX)))
 }
 
 /**
@@ -139,7 +141,8 @@ function writeReleaseRecord(
   artifactsRoot: string,
 ): void {
   const desktopVersion = packageVersion(join(APP_ROOT, 'package.json'), 'desktop package')
-  const dshVersion = packageVersion(join(REPOSITORY_ROOT, 'package.json'), 'dsh package')
+  // The workspace root carries the npm harness identity; the dsh CLI package owns the release version.
+  const dshVersion = packageVersion(join(REPOSITORY_ROOT, 'apps', 'cli', 'package.json'), 'dsh package')
   if (desktopVersion !== dshVersion) {
     throw new Error(`desktop package: desktop version ${desktopVersion} does not match dsh version ${dshVersion}`)
   }
@@ -197,6 +200,8 @@ interface DesktopPackageInvocation {
   readonly prepareOnly: boolean
   readonly unsigned: boolean
   readonly check: boolean
+  /** Resolved signing mode; absent means `unsigned` when `unsigned` is set and `signed` otherwise. */
+  readonly signing?: DesktopSigningMode
   /** Build identifier to publish under, when this build does not publish the product version. */
   readonly requestedBuildVersion: string | undefined
 }
@@ -234,7 +239,6 @@ export function parseDesktopPackageInvocation(
   })
   if (positionals.length > 1) throw new Error('desktop package: expected at most one target')
   const name = positionals[0] ?? hostTargetName(hostPlatform, hostArch)
-  if (values.unsigned && name !== 'win-x64') throw new Error('desktop package: --unsigned requires win-x64')
   if (values.unsigned && values['prepare-only']) throw new Error('desktop package: --unsigned cannot use --prepare-only')
   const requestedBuildVersion = values['build-version']?.trim()
   if (values['build-version'] !== undefined && (requestedBuildVersion === undefined || requestedBuildVersion === '')) {
@@ -330,9 +334,15 @@ async function resolveRequestedBuildVersion(
 }
 
 async function main(): Promise<void> {
-  const invocation = parseDesktopPackageInvocation(process.argv.slice(2))
+  let invocation = parseDesktopPackageInvocation(process.argv.slice(2))
   const { target } = invocation
   const environment = loadDesktopPackageEnvironment(target.platform)
+  const signing = resolveDesktopSigningMode(environment, target.platform, invocation.unsigned)
+  if (signing !== 'signed') {
+    process.stdout.write(`desktop package: ${target.name} packages ${signing === 'azure' ? 'with Azure Trusted Signing'
+      : target.platform === 'darwin' ? 'unsigned (ad-hoc signed, not notarized)' : 'unsigned'}\n`)
+  }
+  invocation = { ...invocation, unsigned: signing === 'unsigned', signing }
   const productVersion = packageVersion(join(APP_ROOT, 'package.json'), 'desktop package')
   // Release settings come from the target dotenv file alone, so the version this run publishes is an
   // argument; the environment variable below only carries it to the child processes that build.
@@ -366,10 +376,13 @@ async function main(): Promise<void> {
       recordPackagingEvent(run.directory, { type: 'macos-settings', packConcurrency: settings.packConcurrency,
         downloadProxyConfigured: settings.downloadProxy !== undefined,
         notarizationProxyConfigured: settings.notarizationProxy !== undefined })
-      await packagingStep(run.directory, 'macos-package', () => withMacOSSigningKeychain(environment,
-        signingEnvironment => packageTarget(invocation, signingEnvironment, run)), secrets)
+      const packaged = invocation
+      await packagingStep(run.directory, 'macos-package', () => packaged.unsigned
+        ? packageTarget(packaged, environment, run)
+        : withMacOSSigningKeychain(environment, signingEnvironment => packageTarget(packaged, signingEnvironment, run)), secrets)
     } else {
-      await packagingStep(run.directory, 'windows-package', () => packageTarget(invocation, environment, run), secrets)
+      const packaged = invocation
+      await packagingStep(run.directory, 'windows-package', () => packageTarget(packaged, environment, run), secrets)
     }
     success = true
   } catch (error) {
@@ -396,6 +409,7 @@ export async function packageTarget(
   run: ReturnType<typeof createPackagingRun> | undefined,
 ): Promise<void> {
   const { target } = invocation
+  const signing: DesktopSigningMode = invocation.signing ?? (invocation.unsigned ? 'unsigned' : 'signed')
   const execute = (args: readonly string[], env: NodeJS.ProcessEnv, cwd: string = APP_ROOT) => runPnpm(args, env, cwd, run)
   const journal = target.platform === 'darwin' ? process.env.DSH_DESKTOP_PACKAGING_RUN_DIR : undefined
   const proxyEvent = (status: string) => { if (journal) recordPackagingEvent(journal, { type: 'notarization-proxy', status }) }
@@ -412,13 +426,19 @@ export async function packageTarget(
     ...buildEnv,
     DSH_DESKTOP_TARGET_PLATFORM: target.platform,
     DSH_DESKTOP_TARGET_ARCH: target.arch,
+    // Runtime preparation ad-hoc signs native macOS files instead of using a Developer ID.
+    ...signing === 'unsigned' && target.platform === 'darwin' ? { DSH_DESKTOP_UNSIGNED: '1' } : {},
   }
   const downloadEnv = macOSDownloadEnvironment(targetEnv, mac?.downloadProxy)
   const electronBuilderEnv = desktopElectronBuilderEnvironment(downloadEnv, invocation.unsigned)
   for (const name of WINDOWS_SIGNING_ENV_NAMES) {
-    if (!invocation.unsigned && environment[name] !== undefined) electronBuilderEnv[name] = environment[name]
+    if (signing === 'signed' && environment[name] !== undefined) electronBuilderEnv[name] = environment[name]
   }
-  const signPrimaryRuntime = target.platform === 'win32' && !invocation.unsigned && !invocation.prepareOnly
+  // Azure credentials reach only electron-builder, whose Trusted Signing module reads them from the environment.
+  for (const name of [...AZURE_SIGNING_SETTINGS, AZURE_PUBLISHER_NAME_SETTING]) {
+    if (signing === 'azure' && environment[name] !== undefined) electronBuilderEnv[name] = environment[name]
+  }
+  const signPrimaryRuntime = target.platform === 'win32' && signing === 'signed' && !invocation.prepareOnly
   const signedStage = async (stage: string, operation: () => Promise<void>): Promise<void> => {
     if (!signPrimaryRuntime) return operation()
     if (run === undefined) throw new Error('desktop package: signed Windows packaging requires a supervised run')
@@ -473,7 +493,11 @@ export async function packageTarget(
   await execute(['run', 'prepare:dsh', ...(signPrimaryRuntime ? ['--defer-runtime-smoke'] : [])], downloadEnv)
   if (signPrimaryRuntime) await execute(['run', 'sign:primary-runtime', '--dsh'], electronBuilderEnv)
   if (invocation.prepareOnly) return
-  if (target.platform === 'darwin' && !invocation.directory) {
+  if (target.platform === 'darwin' && signing === 'unsigned') {
+    // Ad-hoc output: no notarization, so electron-builder emits the directory or DMG/ZIP in one pass.
+    await execute([...desktopElectronBuilderArguments(target, invocation.directory), '--config.mac.notarize=false'], electronBuilderEnv)
+    await execute(['exec', 'tsx', 'scripts/smoke-packaged-runtime.ts', '--unsigned'], targetEnv)
+  } else if (target.platform === 'darwin' && !invocation.directory) {
     await execute([
       ...desktopElectronBuilderArguments(target, true),
       '--config.mac.notarize=false',
@@ -489,12 +513,13 @@ export async function packageTarget(
   } else if (target.platform === 'darwin') {
     await execute([...desktopElectronBuilderArguments(target, true), '--config.mac.notarize=false'], electronBuilderEnv)
     await execute(['exec', 'tsx', 'scripts/smoke-packaged-runtime.ts'], targetEnv)
-    const appPath = join(buildPaths.artifacts, target.arch === 'arm64' ? 'mac-arm64' : 'mac', 'DeepSeek Harness.app')
+    const appPath = join(buildPaths.artifacts, target.arch === 'arm64' ? 'mac-arm64' : 'mac', 'Nexus Harness.app')
     await withMacOSNotarizationProxy(mac?.notarizationProxy,
       () => notarizeMacOS({ appPath, ...resolveMacOSNotarizationEnvironment(environment) }), undefined, undefined, proxyEvent)
   } else {
     await signedStage('artifacts', () => execute(desktopElectronBuilderArguments(target, invocation.directory), electronBuilderEnv))
-    await execute(['exec', 'tsx', 'scripts/smoke-packaged-runtime.ts', ...(invocation.unsigned ? ['--unsigned'] : [])], targetEnv)
+    await execute(['exec', 'tsx', 'scripts/smoke-packaged-runtime.ts',
+      ...(signing === 'unsigned' ? ['--unsigned'] : signing === 'azure' ? ['--external-signatures'] : [])], targetEnv)
   }
   if (!invocation.directory && !invocation.unsigned) writeReleaseRecord(target, electronBuilderEnv, buildPaths.artifacts)
   if (journal) recordPackagingEvent(journal, { type: 'artifacts', directory: buildPaths.artifacts })

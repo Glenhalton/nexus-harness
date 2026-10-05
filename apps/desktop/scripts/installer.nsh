@@ -83,7 +83,19 @@ ManifestDPIAware true
   Page custom InstallerWelcome InstallerWelcomeLeave
 !macroend
 
+; `nexus` and `nexus-code` shims plus the per-user Path entry (installer/terminal-commands.ps1).
+; In-place updates keep them; the app refreshes the shims on launch and honours an explicit removal.
+!macro NexusTerminalCommands Action
+  ${IfNot} ${isUpdated}
+    nsExec::ExecToLog '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\resources\terminal-commands.ps1" -Action ${Action} -InstallDir "$INSTDIR" -ExecutableName "${APP_EXECUTABLE_FILENAME}"'
+    Pop $1
+  ${EndIf}
+!macroend
+
 !macro customUnInstall
+  Push $1
+  !insertmacro NexusTerminalCommands remove
+  Pop $1
   Call un.CleanData
 !macroend
 
@@ -203,6 +215,9 @@ ManifestDPIAware true
   ${EndIf}
   !insertmacro InstallerPublishStage 4
   !insertmacro dshFinishDirectories
+  Push $1
+  !insertmacro NexusTerminalCommands install
+  Pop $1
   ; Standard uninstall-entry metadata read by inventory tools; the upstream template records it only under its private key.
   WriteRegStr SHELL_CONTEXT "${UNINSTALL_REGISTRY_KEY}" InstallLocation "$INSTDIR"
   ${If} $0 == 1
