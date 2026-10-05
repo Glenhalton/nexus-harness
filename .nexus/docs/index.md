@@ -23,11 +23,11 @@ last_updated: "2026-09-07"
 <!-- NEXUS:VITAL_SIGNS:START — managed by `nexus sync` -->
 ## 🩺 Vital Signs (auto)
 
-_Last sync: 2026-10-03T09:01:04.402Z · branch `master` · 0 commits ahead of main · working tree dirty_
+_Last sync: 2026-10-05T17:18:03.761Z · branch `master` · 0 commits ahead of main · working tree dirty_
 
 | Sensor | Reading |
 |--------|---------|
-| Last commit | 04ead754cb — feat(tool-nexus-brain): mount all 19 tools with lossless JSON sanitization · Glenhalton · 2 minutes ago |
+| Last commit | b32103d9be — docs(knowledge): record the verified nexus command handoff between CLI and harness · Glenhalton · 44 seconds ago |
 | Tests | not yet measured |
 | Coverage | not collected · M1 sensor adds `vitest --coverage` parsing |
 | Stale folders | src/commands never created · src/utils never created · src/generators never created · tests/e2e never created · tests/unit never created · tests/integration never created |
@@ -113,3 +113,9 @@ _Last sync: 2026-10-03T09:01:04.402Z · branch `master` · 0 commits ahead of ma
 - ✅ Swapped `file:` dependency for published `@nexus-framework/cli` semver (`^1.4.0` / `1.5.1`).
 - ✅ Shipped `projects` frontmatter scoping in `skill-filesystem`.
 - ✅ Added Ollama header bypass and quick-add card in settings.
+
+- 2026-10-05 — ✅ Completed plan `slim-the-npm-harness-package-and-expose-nexus-bin`: Slim the npm harness package and expose nexus bin
+
+- 2026-10-05 — ✅ Completed plan `desktop-app-rebrand-release-pipeline-and-nexus-on-path`: Desktop app rebrand, release pipeline, and nexus on PATH
+
+- 2026-10-05 — ✅ Completed plan `in-app-onboarding-for-non-technical-users`: In-app onboarding for non-technical users

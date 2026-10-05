@@ -1,9 +1,9 @@
 {
-  "capturedAt": "2026-10-03T09:01:04.402Z",
+  "capturedAt": "2026-10-05T17:18:03.761Z",
   "git": {
     "branch": "master",
     "isDirty": true,
-    "lastCommit": "04ead754cb — feat(tool-nexus-brain): mount all 19 tools with lossless JSON sanitization · Glenhalton · 2 minutes ago",
+    "lastCommit": "b32103d9be — docs(knowledge): record the verified nexus command handoff between CLI and harness · Glenhalton · 44 seconds ago",
     "aheadOfMain": 0
   },
   "files": {

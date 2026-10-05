@@ -2,16 +2,16 @@
 nexus_plan: true
 id: "slim-the-npm-harness-package-and-expose-nexus-bin"
 title: "Slim the npm harness package and expose nexus bin"
-status: "in_progress"
+status: "done"
 created: "2026-10-03"
 updated: "2026-10-05"
 owner: "nexus-implementer"
 source: "manual:refactor"
+type: "refactor"
 parent: null
 estimate: "2d"
 phase: "refactor"
 tags: ["refactor"]
-type: "refactor"
 ---
 ## Goal
 Make `@nexus-framework/harness` on npm fast to install and start: ship prebuilt JS instead of

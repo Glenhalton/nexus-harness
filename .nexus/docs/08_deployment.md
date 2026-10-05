@@ -61,23 +61,22 @@ package once it exists on npm, so a step never starts before the one above is li
 
 | Package | Repo | Version | On npm before this release |
 |---|---|---|---|
-| `@nexus-framework/skills` | `nexus-skills/packages/core` | 0.5.0 | 0.4.0 |
+| `@nexus-framework/skills` | `nexus-skills/packages/core` | 0.5.0 | **published ✅ 2026-10-05** |
 | `@nexus-framework/cli` | `nexus-cli` | 2.0.0 | 1.6.0 |
 | `@nexus-framework/harness` | `nexus-harness` → `apps/nexus-harness` (generated) | 1.1.0 | 1.0.0 (cannot be reused) |
 
-### 1. Skills 0.5.0
+### 1. Skills 0.5.0 — DONE (0.5.0 is live on npm)
 ```bash
 cd nexus-skills && git push origin main --tags
 cd packages/core && npm publish --access public
 npm view @nexus-framework/skills@0.5.0 version   # confirm
 ```
 
-### 2. CLI 2.0.0
+### 2. CLI 2.0.0 — package.json already depends on the published `@nexus-framework/skills@^0.5.0`
 `package.json` must depend on `"@nexus-framework/skills": "^0.5.0"`, not the
 `file:../nexus-skills/packages/core` link used for local development.
 ```bash
 cd nexus-cli
-npm install @nexus-framework/skills@^0.5.0      # rewrites package.json + package-lock from the registry
 npm run build && npx tsc --noEmit && npm test && npm run lint
 npm pack --dry-run                              # no file: deps, dist/ + bin/ + templates/ present
 git commit -am "chore(release): depend on published @nexus-framework/skills 0.5.0"
@@ -101,6 +100,15 @@ cd apps/nexus-harness && npm pack && npm i -g --prefix "$(mktemp -d)" ./nexus-fr
 git commit -am "chore(release): build harness 1.1.0 against NEXUS CLI 2.0.0" && git push
 npm publish --access public
 ```
+
+### Verified before release (2026-10-05)
+- The shared `nexus` command was proven in temp npm prefixes with the real 1.1.0 + 2.0.0 tarballs:
+  all seven install/uninstall orders, zero EEXIST. See the knowledge entry
+  "The `nexus` command is shared, not owned".
+- CLI 1.6.0's published `dist/utils/brain-memory.js` has `split('\\n')`; 2.0.0's has `split('\n')`,
+  so step 3's `tool-nexus-brain` run is what clears that failure.
+- The harness bundles whatever CLI its workspace resolves, so until step 3 lands,
+  `nexus --version` from a harness-only install reports `1.6.0 (via @nexus-framework/harness)`.
 
 ### Known release notes
 - The `tool-nexus-brain` coverage sweep fails on `nexus_log` under CLI 1.6.0 (a `split('\\n')` bug in

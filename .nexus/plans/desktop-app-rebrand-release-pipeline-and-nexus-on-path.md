@@ -2,16 +2,16 @@
 nexus_plan: true
 id: "desktop-app-rebrand-release-pipeline-and-nexus-on-path"
 title: "Desktop app rebrand, release pipeline, and nexus on PATH"
-status: "in_progress"
+status: "done"
 created: "2026-10-03"
 updated: "2026-10-05"
 owner: "nexus-implementer"
 source: "manual:feature"
+type: "feature"
 parent: null
 estimate: "3d"
 phase: "feature-delivery"
 tags: ["feature"]
-type: "feature"
 ---
 ## Goal
 Ship `apps/desktop` as **Nexus Harness**, a downloadable `.dmg`/`.exe` that non-technical

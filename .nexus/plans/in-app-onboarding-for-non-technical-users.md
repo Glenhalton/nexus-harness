@@ -2,16 +2,16 @@
 nexus_plan: true
 id: "in-app-onboarding-for-non-technical-users"
 title: "In-app onboarding for non-technical users"
-status: "in_progress"
+status: "done"
 created: "2026-10-03"
 updated: "2026-10-05"
 owner: "nexus-implementer"
 source: "manual:feature"
+type: "feature"
 parent: null
 estimate: "3d"
 phase: "feature-delivery"
 tags: ["feature"]
-type: "feature"
 ---
 ## Goal
 A first-run flow in the desktop app (and the web UI) that lets someone with no terminal
