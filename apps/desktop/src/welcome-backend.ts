@@ -2,6 +2,11 @@
 
 import { randomUUID } from 'node:crypto'
 import { desktopAccountBackend, type DesktopAccountBackend } from './account-backend.ts'
+import type { WelcomeFolderChoice, WelcomeFolderResult } from './welcome-api.ts'
+
+/** Host routes of `@deepseek-ai/dsh-host-nexus-setup`; duplicated so the shell does not depend on that package. */
+const NEXUS_SETUP_STATUS_PATH = '/nexus-setup/status'
+const NEXUS_SETUP_INIT_PATH = '/nexus-setup/init'
 
 /** Metadata needed before the native entry or workspace becomes visible. */
 export interface WelcomeState {
@@ -23,6 +28,52 @@ export interface DesktopWelcomeBackend {
    * @returns A safe write outcome without provider diagnostics.
    */
   save(apiKey: string): Promise<{ ok: boolean }>
+  /**
+   * @param path - absolute folder chosen in the native dialog.
+   * @returns its NEXUS state from the Host setup routes; `unknown` when the Host cannot answer.
+   */
+  folderState(path: string): Promise<WelcomeFolderChoice['state']>
+  /** @param path - absolute folder. @returns whether the Host scaffolded (or already had) `.nexus/`. */
+  setUpFolder(path: string): Promise<WelcomeFolderResult>
+  /** @param path - absolute folder. @returns whether the Host registered it as a Workspace. */
+  useFolder(path: string): Promise<WelcomeFolderResult>
+}
+
+/** Official endpoint answering an authenticated model list; used only to check a typed key. */
+export const DEEPSEEK_KEY_CHECK_URL = 'https://api.deepseek.com/models'
+
+/** Outcome of checking one key against the official endpoint before it is saved. */
+export type ApiKeyCheck = 'ok' | 'rejected' | 'unreachable'
+
+/**
+ * Check a typed official key before saving it, so a mistyped key is caught
+ * on the welcome form instead of on the first chat turn.
+ * @param apiKey - trimmed key the user entered.
+ * @param send - network fetch (Electron `net.fetch` in production).
+ * @param timeoutMs - deadline for the whole check.
+ * @returns `rejected` on 401/403, `unreachable` on network failure, timeout, or a 5xx answer, otherwise `ok`.
+ */
+export async function checkDeepSeekApiKey(
+  apiKey: string,
+  send: (input: string, init?: RequestInit) => Promise<Response>,
+  timeoutMs = 10_000,
+): Promise<ApiKeyCheck> {
+  let response: Response
+  try {
+    response = await send(DEEPSEEK_KEY_CHECK_URL, {
+      method: 'GET',
+      redirect: 'error',
+      headers: { authorization: `Bearer ${apiKey}`, accept: 'application/json' },
+      signal: AbortSignal.timeout(timeoutMs),
+    })
+  } catch {
+    // DNS, TLS, proxy, and timeout failures all mean the key could not be checked.
+    return 'unreachable'
+  }
+  await response.body?.cancel()
+  if (response.status === 401 || response.status === 403) return 'rejected'
+  if (response.status >= 500) return 'unreachable'
+  return 'ok'
 }
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -129,6 +180,44 @@ export async function connectDesktopWelcome(
         return { ok: true }
       } catch {
         // Provider diagnostics may contain credentials; the native form owns failure copy.
+        return { ok: false }
+      }
+    },
+    async folderState(path) {
+      try {
+        const url = new URL(NEXUS_SETUP_STATUS_PATH, origin)
+        url.searchParams.set('path', path)
+        const response = await send(url.href, { credentials: 'include', redirect: 'error', headers: { accept: 'application/json' } })
+        if (!response.ok) {
+          await response.body?.cancel()
+          return 'unknown'
+        }
+        const payload: unknown = await response.json()
+        const state = record(payload) ? payload.state : undefined
+        return state === 'ready' || state === 'needs-setup' ? state : 'unknown'
+      } catch {
+        // A Host without the setup routes, or a malformed answer: use the folder without offering setup.
+        return 'unknown'
+      }
+    },
+    async setUpFolder(path) {
+      try {
+        const response = await send(new URL(NEXUS_SETUP_INIT_PATH, origin).href, {
+          method: 'POST', credentials: 'include', redirect: 'error',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ path }),
+        })
+        await response.body?.cancel()
+        return { ok: response.ok }
+      } catch {
+        return { ok: false }
+      }
+    },
+    async useFolder(path) {
+      try {
+        await invoke({ namespace: 'workspace', method: 'create', args: { request: { path } } })
+        return { ok: true }
+      } catch {
         return { ok: false }
       }
     },
