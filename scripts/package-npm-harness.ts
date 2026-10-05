@@ -1,227 +1,324 @@
 /**
  * Packages the self-contained @nexus-framework/harness distribution for npm.
  *
- * Materializes the runtime source closure, web dist assets, TypeScript path configs,
- * and launcher binary so that `npx -y @nexus-framework/harness` runs seamlessly
- * anywhere without monorepo dependencies.
+ * The package ships the prebuilt JavaScript that `pnpm build:lib` / `pnpm build:web`
+ * emit, never TypeScript sources, so nothing compiles at startup:
+ *
+ * 1. Select the workspace closure rooted at the `@deepseek-ai/dsh` CLI (plus the
+ *    Nexus brain plugins), the same closure rule the Desktop package set uses.
+ * 2. `pnpm pack` every closure member (honours each package's `files` and rewrites
+ *    `workspace:` ranges) and unpack it to `runtime/node_modules/<name>`, so Node's
+ *    ordinary node_modules lookup — which the profile resolver relies on — finds it.
+ * 3. Derive `dependencies` from the external packages the shipped JavaScript actually
+ *    references, intersected with what the closure manifests declare.
+ * 4. Minify the shipped JavaScript with esbuild (the obfuscation step).
+ * 5. Write the thin launchers (`nexus-harness`/`nexus-code`/`harness`/`dsh` and the
+ *    `nexus` forwarder to the bundled `@nexus-framework/cli`), manifest, and LICENSE.
+ *    README.md is maintained by hand next to the generated files.
  */
 
-import { cpSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync, chmodSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import {
+  chmodSync,
+  existsSync,
+  globSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { createRequire } from 'node:module'
-import { join, resolve } from 'node:path'
+import { tmpdir } from 'node:os'
+import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import * as yaml from 'js-yaml'
 
 const REPO_ROOT = resolve(fileURLToPath(import.meta.url), '../../')
 const PKG_DIR = join(REPO_ROOT, 'apps', 'nexus-harness')
 const RUNTIME_DIR = join(PKG_DIR, 'runtime')
+const RUNTIME_MODULES_DIR = join(RUNTIME_DIR, 'node_modules')
 
-function collectExternalDependencies(): Record<string, string> {
-  const manifestMap = new Map<string, Record<string, unknown>>()
+/** Published package identity. */
+export const HARNESS_PACKAGE_NAME = '@nexus-framework/harness'
+/** Published package version; bump deliberately before a release. */
+export const HARNESS_VERSION = '1.0.0'
+/** Workspace package that owns the harness command-line entry (`lib/bin.js`). */
+export const CLI_PACKAGE = '@deepseek-ai/dsh'
+/** npm package whose `nexus` bin the `nexus` forwarder runs. */
+export const NEXUS_CLI_PACKAGE = '@nexus-framework/cli'
+/** Version range for the bundled NEXUS CLI when no closure package declares one. */
+export const NEXUS_CLI_FALLBACK_RANGE = '^1.6.0'
 
-  function walk(currentDir: string, depth: number, maxDepth: number): void {
-    if (depth > maxDepth || !existsSync(currentDir)) return
-    for (const entry of readdirSync(currentDir, { withFileTypes: true })) {
-      if (!entry.isDirectory()) continue
-      if (entry.name === 'node_modules' || entry.name === '.git' || entry.name === 'dist' || entry.name === 'nexus-harness') continue
-      const full = join(currentDir, entry.name)
-      const pkgPath = join(full, 'package.json')
-      if (existsSync(pkgPath)) {
-        try {
-          const manifest = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>
-          if (typeof manifest.name === 'string') {
-            manifestMap.set(manifest.name, manifest)
-          }
-        } catch {}
-      }
-      walk(full, depth + 1, maxDepth)
-    }
-  }
+/**
+ * Closure roots. The CLI pulls in everything `dsh web` composes; the Nexus brain plugins
+ * are loaded by profile configuration rather than imported, so nothing else reaches them.
+ */
+export const HARNESS_ROOT_PACKAGES: readonly string[] = [
+  CLI_PACKAGE,
+  '@deepseek-ai/dsh-experimental-tool-nexus-brain',
+  '@deepseek-ai/dsh-experimental-nexus-brain-context',
+]
 
-  // Scan workspace trees
-  walk(join(REPO_ROOT, 'packages'), 1, 3)
-  walk(join(REPO_ROOT, 'vendor'), 1, 3)
-  walk(join(REPO_ROOT, 'apps'), 1, 3)
-  walk(join(REPO_ROOT, 'native'), 1, 4)
-
-  const externalDeps: Record<string, string> = {
-    tsx: '^4.22.4',
-    typescript: '^6.0.3',
-  }
-
-  for (const [, manifest] of manifestMap) {
-    const deps = (manifest.dependencies || {}) as Record<string, string>
-    for (const [dep, ver] of Object.entries(deps)) {
-      if (!manifestMap.has(dep) && !dep.startsWith('@deepseek-ai/')) {
-        // Strip workspace: protocol if present
-        const cleanVer = ver.startsWith('workspace:') ? ver.replace('workspace:', '') : ver
-        externalDeps[dep] = cleanVer || '*'
-      }
-    }
-  }
-
-  // Sort keys alphabetically
-  return Object.keys(externalDeps)
-    .sort()
-    .reduce<Record<string, string>>((acc, key) => {
-      acc[key] = externalDeps[key] as string
-      return acc
-    }, {})
+/** Bin names; every harness alias runs the same launcher. */
+export const HARNESS_BINS: Readonly<Record<string, string>> = {
+  'nexus-harness': 'bin/nexus-harness.js',
+  'nexus-code': 'bin/nexus-harness.js',
+  harness: 'bin/nexus-harness.js',
+  dsh: 'bin/nexus-harness.js',
+  nexus: 'bin/nexus.js',
 }
 
-export function packageHarness(): void {
-  console.log('Packaging @nexus-framework/harness...')
+/** Files under the unpacked runtime that are never needed to run (types, source maps, build state). */
+const RUNTIME_PRUNE_PATTERN = /(?:\.d\.[cm]?ts|\.map|\.tsbuildinfo)$/u
+/** JavaScript files the minifier rewrites. */
+const MINIFY_PATTERN = /\.(?:[cm]?js)$/u
+/** Files scanned for references to external packages. */
+const REFERENCE_SCAN_PATTERN = /\.(?:[cm]?js|ya?ml)$/u
 
-  // 1. Verify web dist exists
-  const webDist = join(REPO_ROOT, 'apps', 'web', 'dist')
-  if (!existsSync(webDist)) {
-    throw new Error('apps/web/dist does not exist. Run "pnpm build:web" before packaging.')
-  }
+type DependencyMap = Readonly<Record<string, string>>
 
-  // 2. Clean & recreate runtime directory
-  rmSync(RUNTIME_DIR, { recursive: true, force: true })
-  mkdirSync(RUNTIME_DIR, { recursive: true })
+/** The manifest fields the packaging logic reads. */
+export interface WorkspaceManifest {
+  readonly name: string
+  readonly version: string
+  /** Absolute package directory. */
+  readonly dir: string
+  readonly dependencies?: DependencyMap
+  readonly peerDependencies?: DependencyMap
+  readonly optionalDependencies?: DependencyMap
+  /**
+   * True for prebuilt-binary packages restricted by `os`/`cpu` (the node-addon-system
+   * platform packages). One machine builds only its own binary, so these ship as npm
+   * optional dependencies, and npm installs whichever matches the user's platform.
+   */
+  readonly platform?: boolean
+}
 
-  const copyFilter = (src: string): boolean => {
-    const base = src.split('/').pop() || ''
-    if (base === 'node_modules') return false
-    if (base === '.git') return false
-    if (base === 'tests') return false
-    if (base.endsWith('.spec.ts') || base.endsWith('.test.ts')) return false
-    if (base.endsWith('.tsbuildinfo')) return false
-    return true
-  }
+/**
+ * Turn a pnpm `workspace:` range into the range a published manifest carries.
+ * @param range - Declared range, possibly using the workspace protocol.
+ * @param version - Version of the workspace package the range points at.
+ * @returns The published range.
+ */
+export function resolveWorkspaceRange(range: string, version: string): string {
+  if (!range.startsWith('workspace:')) return range
+  const spec = range.slice('workspace:'.length)
+  if (spec === '*' || spec === '') return version
+  if (spec === '~' || spec === '^') return `${spec}${version}`
+  return spec
+}
 
-  // 3. Copy packages, vendor, apps/cli
-  console.log('Copying runtime source packages...')
-  cpSync(join(REPO_ROOT, 'packages'), join(RUNTIME_DIR, 'packages'), { recursive: true, filter: copyFilter })
-  cpSync(join(REPO_ROOT, 'vendor'), join(RUNTIME_DIR, 'vendor'), { recursive: true, filter: copyFilter })
-  cpSync(join(REPO_ROOT, 'apps', 'cli'), join(RUNTIME_DIR, 'apps', 'cli'), { recursive: true, filter: copyFilter })
+/** Section names that make a workspace package part of the closure. */
+const CLOSURE_SECTIONS = ['dependencies', 'peerDependencies', 'optionalDependencies'] as const
 
-  // 4. Copy apps/web manifest & dist
-  console.log('Copying apps/web frontend dist...')
-  mkdirSync(join(RUNTIME_DIR, 'apps', 'web'), { recursive: true })
-  cpSync(join(REPO_ROOT, 'apps', 'web', 'package.json'), join(RUNTIME_DIR, 'apps', 'web', 'package.json'))
-  cpSync(webDist, join(RUNTIME_DIR, 'apps', 'web', 'dist'), { recursive: true })
-
-  // 5. Copy root tsconfig configs
-  cpSync(join(REPO_ROOT, 'tsconfig.json'), join(RUNTIME_DIR, 'tsconfig.json'))
-  cpSync(join(REPO_ROOT, 'tsconfig.base.json'), join(RUNTIME_DIR, 'tsconfig.base.json'))
-
-  // 5b. Minify & Obfuscate runtime source files
-  console.log('Minifying and obfuscating runtime files with esbuild...')
-  const esbuildCandidates = [
-    join(REPO_ROOT, 'node_modules', '.pnpm', 'esbuild@0.28.1', 'node_modules', 'esbuild', 'lib', 'main.js'),
-    join(REPO_ROOT, 'node_modules', 'esbuild', 'lib', 'main.js'),
-  ]
-  let esbuild: { transformSync: (code: string, options: Record<string, unknown>) => { code: string } } | null = null
-  const localReq = createRequire(import.meta.url)
-  for (const candidate of esbuildCandidates) {
-    if (existsSync(candidate)) {
-      try {
-        esbuild = localReq(candidate)
-        break
-      } catch {}
-    }
-  }
-
-  if (esbuild) {
-    let obfuscatedCount = 0
-    const minifyWalk = (dir: string): void => {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const full = join(dir, entry.name)
-        if (entry.isDirectory()) {
-          minifyWalk(full)
-        } else if (
-          (entry.name.endsWith('.ts') || entry.name.endsWith('.tsx') || entry.name.endsWith('.js') || entry.name.endsWith('.mjs')) &&
-          !entry.name.endsWith('.d.ts')
-        ) {
-          try {
-            const raw = readFileSync(full, 'utf8')
-            const loader = entry.name.endsWith('.tsx') ? 'tsx' : entry.name.endsWith('.js') || entry.name.endsWith('.mjs') ? 'js' : 'ts'
-            const transformed = esbuild.transformSync(raw, {
-              loader,
-              minify: true,
-              legalComments: 'inline',
-              target: 'es2024',
-              format: 'esm',
-            })
-            writeFileSync(full, transformed.code, 'utf8')
-            obfuscatedCount++
-          } catch {}
-        }
+/**
+ * Select every workspace package reachable from the roots through dependencies, peer
+ * dependencies, and optional dependencies; external names are left for npm to resolve.
+ * @param workspace - Workspace manifests keyed by package name.
+ * @param roots - Package names the closure starts from.
+ * @returns Selected manifests sorted by name.
+ */
+export function selectWorkspaceClosure(
+  workspace: ReadonlyMap<string, WorkspaceManifest>,
+  roots: readonly string[],
+): WorkspaceManifest[] {
+  const selected = new Map<string, WorkspaceManifest>()
+  const visit = (name: string): void => {
+    if (selected.has(name)) return
+    const manifest = workspace.get(name)
+    if (manifest === undefined) throw new Error(`package-npm-harness: closure root ${name} is not a workspace package`)
+    selected.set(name, manifest)
+    for (const section of CLOSURE_SECTIONS) {
+      for (const dependency of Object.keys(manifest[section] ?? {})) {
+        if (workspace.get(dependency)?.platform !== true && workspace.has(dependency)) visit(dependency)
       }
     }
-    minifyWalk(RUNTIME_DIR)
-    console.log(`✅ Obfuscated and minified ${obfuscatedCount} runtime source files.`)
+  }
+  for (const root of roots) visit(root)
+  return [...selected.values()].sort((left, right) => left.name.localeCompare(right.name))
+}
+
+/**
+ * Package name of a bare module specifier.
+ * @param specifier - Import specifier such as `@scope/pkg/sub` or `pkg/sub`.
+ * @returns The package name, or undefined for relative, absolute, URL, and builtin specifiers.
+ */
+export function packageNameOfSpecifier(specifier: string): string | undefined {
+  if (specifier === '' || specifier.startsWith('.') || specifier.startsWith('/') || specifier.startsWith('#')) return undefined
+  if (/^[a-z][a-z0-9+.-]*:/iu.test(specifier)) return undefined
+  const parts = specifier.split('/')
+  if (specifier.startsWith('@')) {
+    const [scope, name] = parts
+    if (scope === undefined || name === undefined || scope.length < 2 || name === '') return undefined
+    return `${scope}/${name}`
+  }
+  return parts[0]
+}
+
+/** A quoted string that could be a bare module specifier or a package-relative path. */
+const QUOTED_SPECIFIER = /(["'`])((?:@[a-z0-9][\w.-]*\/)?[a-z0-9][\w.-]*(?:\/[^"'`\s]*)?)\1/giu
+/** An unquoted scoped package name, as YAML plugin lists write them. */
+const SCOPED_NAME = /@[a-z0-9][\w.-]*\/[a-z0-9][\w.-]*/giu
+
+/**
+ * Collect every package name a shipped file could reference: string literals shaped like
+ * bare specifiers (covers `import`, `import()`, `require`, `require.resolve`,
+ * `import.meta.resolve`, and names handed to spawners), plus unquoted scoped names.
+ * This deliberately over-collects; callers intersect it with declared dependencies.
+ * @param source - File contents.
+ * @returns Referenced package names.
+ */
+export function collectReferencedPackages(source: string): Set<string> {
+  const names = new Set<string>()
+  for (const match of source.matchAll(QUOTED_SPECIFIER)) {
+    const name = packageNameOfSpecifier(match[2] ?? '')
+    if (name !== undefined) names.add(name)
+  }
+  for (const match of source.matchAll(SCOPED_NAME)) names.add(match[0])
+  return names
+}
+
+/** The external dependency sections of the published manifest, with the evidence behind them. */
+export interface ExternalDependencyPlan {
+  readonly dependencies: Record<string, string>
+  readonly optionalDependencies: Record<string, string>
+  /** Declared by a closure manifest but never referenced by shipped files. */
+  readonly pruned: readonly string[]
+  /** Declared with different ranges by different closure packages: `name: range (pkg), ... -> chosen`. */
+  readonly conflicts: readonly string[]
+}
+
+/**
+ * Lowest version a simple range admits (`^1.2.3`, `~1.2`, `>=1`, `1.2.3`), as numbers.
+ * @param range - A semver range.
+ * @returns `[major, minor, patch]`, or undefined when the range is not a single comparator.
+ */
+export function rangeMinimum(range: string): [number, number, number] | undefined {
+  const match = /^\s*(?:\^|~|>=|=)?\s*v?(\d+)(?:\.(\d+))?(?:\.(\d+))?(?:-[\w.]+)?\s*$/u.exec(range)
+  if (match === null) return undefined
+  return [Number(match[1]), Number(match[2] ?? 0), Number(match[3] ?? 0)]
+}
+
+/**
+ * Pick one range when closure packages disagree: the one with the highest minimum version,
+ * so every declaring package gets at least what it asked for. Unparseable ranges lose to
+ * parseable ones; ties keep the earlier range.
+ * @param left - Range currently chosen.
+ * @param right - Competing range.
+ * @returns The range to keep.
+ */
+export function preferRange(left: string, right: string): string {
+  const a = rangeMinimum(left)
+  const b = rangeMinimum(right)
+  if (b === undefined) return left
+  if (a === undefined) return right
+  for (let index = 0; index < 3; index++) {
+    if ((b[index] ?? 0) !== (a[index] ?? 0)) return (b[index] ?? 0) > (a[index] ?? 0) ? right : left
+  }
+  return left
+}
+
+function sortedRecord(entries: Iterable<readonly [string, string]>): Record<string, string> {
+  return Object.fromEntries([...entries].sort(([left], [right]) => left.localeCompare(right)))
+}
+
+/**
+ * Plan the external dependencies: a name is kept when some closure package declares it
+ * and some shipped file references it. A name only ever declared as optional stays optional,
+ * so a failed native build does not fail the install. Forced names are always kept, and so
+ * are platform workspace packages (as optional dependencies: their names are computed at
+ * runtime, so no literal reference exists).
+ * @param closure - Selected workspace manifests.
+ * @param workspace - Every workspace manifest; non-platform members are bundled, never external.
+ * @param referenced - Names collected from the shipped files.
+ * @param forced - Names kept regardless of references, with a fallback range.
+ * @returns The dependency plan.
+ */
+export function planExternalDependencies(
+  closure: readonly WorkspaceManifest[],
+  workspace: ReadonlyMap<string, WorkspaceManifest>,
+  referenced: ReadonlySet<string>,
+  forced: DependencyMap = {},
+): ExternalDependencyPlan {
+  const declared = new Map<string, { range: string; owner: string; optional: boolean }>()
+  const conflicts = new Map<string, Set<string>>()
+  const declare = (name: string, declaredRange: string, owner: string, optional: boolean): void => {
+    const member = workspace.get(name)
+    if (member !== undefined && member.platform !== true) return
+    const range = member === undefined ? declaredRange : resolveWorkspaceRange(declaredRange, member.version)
+    const existing = declared.get(name)
+    if (existing === undefined) {
+      declared.set(name, { range, owner, optional })
+      return
+    }
+    if (!optional) existing.optional = false
+    if (existing.range !== range) {
+      const seen = conflicts.get(name) ?? new Set([`${existing.range} (${existing.owner})`])
+      seen.add(`${range} (${owner})`)
+      conflicts.set(name, seen)
+      existing.range = preferRange(existing.range, range)
+    }
+  }
+  // Sorted owners make conflict reports, and so the output, deterministic.
+  for (const manifest of [...closure].sort((left, right) => left.name.localeCompare(right.name))) {
+    for (const [name, range] of Object.entries(manifest.dependencies ?? {})) declare(name, range, manifest.name, false)
+    for (const [name, range] of Object.entries(manifest.peerDependencies ?? {})) declare(name, range, manifest.name, false)
+    for (const [name, range] of Object.entries(manifest.optionalDependencies ?? {})) declare(name, range, manifest.name, true)
   }
 
-  // 6. Write bin/nexus-harness.js
-  const binDir = join(PKG_DIR, 'bin')
-  mkdirSync(binDir, { recursive: true })
-  const binPath = join(binDir, 'nexus-harness.js')
-  const binContent = `#!/usr/bin/env node
-import { spawn } from 'node:child_process';
-import { createRequire } from 'node:module';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const packageRoot = path.resolve(__dirname, '..');
-const binTs = path.join(packageRoot, 'runtime', 'apps', 'cli', 'src', 'bin.ts');
-const tsconfig = path.join(packageRoot, 'runtime', 'tsconfig.json');
-
-const require = createRequire(import.meta.url);
-let tsxLoader = 'tsx/esm';
-try {
-  tsxLoader = require.resolve('tsx/esm');
-} catch {}
-
-const nodePath = [
-  path.join(packageRoot, 'node_modules'),
-  process.env.NODE_PATH || '',
-].filter(Boolean).join(path.delimiter);
-
-const child = spawn(process.execPath, [
-  '--import', tsxLoader,
-  binTs,
-  ...process.argv.slice(2),
-], {
-  cwd: process.cwd(),
-  stdio: 'inherit',
-  env: {
-    ...process.env,
-    TSX_TSCONFIG_PATH: tsconfig,
-    NODE_PATH: nodePath,
-  },
-});
-
-child.on('exit', (code, signal) => {
-  if (typeof code === 'number') {
-    process.exit(code);
+  const required: Array<[string, string]> = []
+  const optional: Array<[string, string]> = []
+  const pruned: string[] = []
+  for (const [name, entry] of declared) {
+    if (name in forced) continue
+    if (workspace.get(name)?.platform === true) {
+      optional.push([name, entry.range])
+      continue
+    }
+    if (!referenced.has(name)) {
+      pruned.push(name)
+      continue
+    }
+    ;(entry.optional ? optional : required).push([name, entry.range])
   }
-  if (signal) {
-    process.kill(process.pid, signal);
+  for (const [name, fallback] of Object.entries(forced)) {
+    required.push([name, declared.get(name)?.range ?? fallback])
   }
-});
-`
-  writeFileSync(binPath, binContent, 'utf8')
-  chmodSync(binPath, 0o755)
+  return {
+    dependencies: sortedRecord(required),
+    optionalDependencies: sortedRecord(optional),
+    pruned: pruned.sort(),
+    conflicts: [...conflicts.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([name, ranges]) => `${name}: ${[...ranges].join(', ')} -> ${declared.get(name)?.range ?? ''}`),
+  }
+}
 
-  // 7. Write package.json
-  const dependencies = collectExternalDependencies()
-  const packageJson = {
-    name: '@nexus-framework/harness',
-    version: '1.0.0',
+/** Inputs for the published manifest. */
+export interface HarnessManifestInput {
+  readonly engines: string
+  readonly dependencies: Record<string, string>
+  readonly optionalDependencies: Record<string, string>
+}
+
+/**
+ * Build the published package.json.
+ * @param input - Engines range and dependency sections.
+ * @returns The manifest object.
+ */
+export function buildHarnessManifest(input: HarnessManifestInput): Record<string, unknown> {
+  return {
+    name: HARNESS_PACKAGE_NAME,
+    version: HARNESS_VERSION,
     description: 'NEXUS Harness: AI-Native Execution Harness and Web Interface (Proprietary / All Rights Reserved)',
     publishConfig: {
       access: 'public',
     },
     type: 'module',
-    bin: {
-      'nexus-harness': 'bin/nexus-harness.js',
-      harness: 'bin/nexus-harness.js',
-      dsh: 'bin/nexus-harness.js',
-    },
+    bin: { ...HARNESS_BINS },
     files: [
       'bin',
       'runtime',
@@ -243,15 +340,270 @@ child.on('exit', (code, signal) => {
     ],
     license: 'SEE LICENSE IN LICENSE',
     engines: {
-      node: '>=20.0.0',
+      node: input.engines,
     },
-    dependencies,
+    dependencies: input.dependencies,
+    ...(Object.keys(input.optionalDependencies).length > 0 && { optionalDependencies: input.optionalDependencies }),
+  }
+}
+
+/**
+ * Launcher shared by `nexus-harness`, `nexus-code`, `harness`, and `dsh`. It runs the
+ * prebuilt CLI in-process (no `tsx`, no second Node process) and points `process.argv[1]`
+ * at the real entry so code that re-derives the entry path keeps working.
+ */
+export const HARNESS_LAUNCHER_SOURCE = `#!/usr/bin/env node
+import path from 'node:path';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+
+const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const entry = path.join(packageRoot, 'runtime', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js');
+process.argv[1] = entry;
+const { runCli } = await import(pathToFileURL(entry).href);
+await runCli();
+`
+
+/** Forwarder that runs the bundled @nexus-framework/cli \`nexus\` bin in-process. */
+export const NEXUS_FORWARDER_SOURCE = `#!/usr/bin/env node
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+
+const require = createRequire(import.meta.url);
+let manifestPath;
+try {
+  manifestPath = require.resolve('${NEXUS_CLI_PACKAGE}/package.json');
+} catch {
+  console.error('nexus: ${NEXUS_CLI_PACKAGE} is missing from this ${HARNESS_PACKAGE_NAME} install; reinstall the package.');
+  process.exit(1);
+}
+const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+const bin = typeof manifest.bin === 'string' ? manifest.bin : manifest.bin?.nexus;
+if (typeof bin !== 'string') {
+  console.error('nexus: ${NEXUS_CLI_PACKAGE} declares no nexus bin.');
+  process.exit(1);
+}
+const entry = path.resolve(path.dirname(manifestPath), bin);
+process.argv[1] = entry;
+await import(pathToFileURL(entry).href);
+`
+
+function readJson(path: string): Record<string, unknown> {
+  return JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>
+}
+
+function asDependencyMap(value: unknown): DependencyMap | undefined {
+  if (value === undefined || value === null || typeof value !== 'object' || Array.isArray(value)) return undefined
+  return value as DependencyMap
+}
+
+/** Read every workspace manifest named by pnpm-workspace.yaml, except this generated package. */
+function readWorkspace(): Map<string, WorkspaceManifest> {
+  const config = yaml.load(readFileSync(join(REPO_ROOT, 'pnpm-workspace.yaml'), 'utf8')) as { packages: string[] }
+  const include = config.packages.filter(pattern => !pattern.startsWith('!'))
+  const exclude = new Set(config.packages.filter(pattern => pattern.startsWith('!')).map(pattern => pattern.slice(1)))
+  const workspace = new Map<string, WorkspaceManifest>()
+  for (const path of globSync(include.map(pattern => `${pattern}/package.json`), { cwd: REPO_ROOT })) {
+    const dir = dirname(path)
+    if (exclude.has(dir) || dir === relative(REPO_ROOT, PKG_DIR)) continue
+    const manifest = readJson(join(REPO_ROOT, path))
+    const { name, version } = manifest
+    if (typeof name !== 'string' || typeof version !== 'string') continue
+    const dependencies = asDependencyMap(manifest.dependencies)
+    const peerDependencies = asDependencyMap(manifest.peerDependencies)
+    const optionalDependencies = asDependencyMap(manifest.optionalDependencies)
+    workspace.set(name, {
+      name,
+      version,
+      dir: join(REPO_ROOT, dir),
+      ...((manifest.os !== undefined || manifest.cpu !== undefined) && { platform: true }),
+      ...(dependencies !== undefined && { dependencies }),
+      ...(peerDependencies !== undefined && { peerDependencies }),
+      ...(optionalDependencies !== undefined && { optionalDependencies }),
+    })
+  }
+  return workspace
+}
+
+function run(command: string, args: readonly string[]): Promise<string> {
+  return new Promise((resolveRun, rejectRun) => {
+    const child = spawn(command, [...args], { stdio: ['ignore', 'pipe', 'pipe'] })
+    let output = ''
+    child.stdout.on('data', (chunk: Buffer) => { output += chunk.toString() })
+    child.stderr.on('data', (chunk: Buffer) => { output += chunk.toString() })
+    child.once('error', rejectRun)
+    child.once('close', (status) => {
+      if (status === 0) resolveRun(output)
+      else rejectRun(new Error(`${command} ${args.join(' ')} exited with ${String(status)}:\n${output}`))
+    })
+  })
+}
+
+function pnpmCommand(): { command: string; prefix: string[] } {
+  const execpath = process.env.npm_execpath
+  if (execpath !== undefined && /\.[cm]?js$/iu.test(execpath)) return { command: process.execPath, prefix: [execpath] }
+  return { command: process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', prefix: [] }
+}
+
+async function runPool<T>(items: readonly T[], concurrency: number, task: (item: T) => Promise<void>): Promise<void> {
+  let cursor = 0
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+    while (cursor < items.length) {
+      const item = items[cursor]
+      cursor += 1
+      if (item !== undefined) await task(item)
+    }
+  }))
+}
+
+/** `pnpm pack` each closure member and unpack it under runtime/node_modules/<name>. */
+async function materializeClosure(closure: readonly WorkspaceManifest[]): Promise<void> {
+  const packDir = mkdtempSync(join(tmpdir(), 'nexus-harness-pack-'))
+  const pnpm = pnpmCommand()
+  try {
+    await runPool(closure, 8, async (manifest) => {
+      const destination = join(packDir, manifest.name.replace('/', '+'))
+      mkdirSync(destination, { recursive: true })
+      await run(pnpm.command, [...pnpm.prefix, '--dir', manifest.dir, 'pack', '--pack-destination', destination])
+      const tarball = readdirSync(destination).find(file => file.endsWith('.tgz'))
+      if (tarball === undefined) throw new Error(`package-npm-harness: pnpm pack produced no tarball for ${manifest.name}`)
+      const target = join(RUNTIME_MODULES_DIR, manifest.name)
+      mkdirSync(target, { recursive: true })
+      await run('tar', ['-xzf', join(destination, tarball), '-C', target, '--strip-components', '1'])
+    })
+  } finally {
+    rmSync(packDir, { recursive: true, force: true })
+  }
+}
+
+function walkFiles(dir: string, visit: (path: string) => void): void {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name)
+    if (entry.isDirectory()) walkFiles(full, visit)
+    else if (entry.isFile()) visit(full)
+  }
+}
+
+interface Esbuild {
+  transformSync: (code: string, options: Record<string, unknown>) => { code: string }
+}
+
+function loadEsbuild(): Esbuild {
+  const localRequire = createRequire(import.meta.url)
+  const candidates = [
+    join(REPO_ROOT, 'node_modules', 'esbuild', 'lib', 'main.js'),
+    ...globSync('node_modules/.pnpm/esbuild@*/node_modules/esbuild/lib/main.js', { cwd: REPO_ROOT })
+      .sort((left, right) => right.localeCompare(left, undefined, { numeric: true }))
+      .map(path => join(REPO_ROOT, path)),
+  ]
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return localRequire(candidate) as Esbuild
+  }
+  throw new Error('package-npm-harness: esbuild is not installed; run pnpm install before packaging.')
+}
+
+/** Minify shipped JavaScript in place. esbuild keeps hashbangs and, with no `format`, module syntax. */
+function minifyRuntime(esbuild: Esbuild): { minified: number; failed: string[] } {
+  let minified = 0
+  const failed: string[] = []
+  walkFiles(RUNTIME_MODULES_DIR, (path) => {
+    if (!MINIFY_PATTERN.test(path)) return
+    try {
+      const transformed = esbuild.transformSync(readFileSync(path, 'utf8'), {
+        loader: 'js',
+        minify: true,
+        legalComments: 'inline',
+        target: 'es2024',
+      })
+      writeFileSync(path, transformed.code, 'utf8')
+      minified++
+    } catch {
+      failed.push(relative(RUNTIME_DIR, path))
+    }
+  })
+  return { minified, failed }
+}
+
+function directorySize(dir: string): number {
+  let bytes = 0
+  walkFiles(dir, (path) => { bytes += statSync(path).size })
+  return bytes
+}
+
+/** Package the npm distribution into apps/nexus-harness. */
+export async function packageHarness(): Promise<void> {
+  console.log(`Packaging ${HARNESS_PACKAGE_NAME}...`)
+
+  // 1. Built inputs must exist: lib/ from build:lib, apps/web/dist from build:web.
+  if (!existsSync(join(REPO_ROOT, 'apps', 'web', 'dist', 'index.html'))) {
+    throw new Error('apps/web/dist does not exist. Run "pnpm build:web" before packaging.')
+  }
+  if (!existsSync(join(REPO_ROOT, 'apps', 'cli', 'lib', 'bin.js'))) {
+    throw new Error('apps/cli/lib/bin.js does not exist. Run "pnpm build:lib" before packaging.')
   }
 
-  writeFileSync(join(PKG_DIR, 'package.json'), `${JSON.stringify(packageJson, null, 2)}\n`, 'utf8')
+  // 2. Closure of workspace packages, packed exactly as npm would publish them.
+  const workspace = readWorkspace()
+  const closure = selectWorkspaceClosure(workspace, HARNESS_ROOT_PACKAGES)
+  rmSync(RUNTIME_DIR, { recursive: true, force: true })
+  mkdirSync(RUNTIME_MODULES_DIR, { recursive: true })
+  console.log(`Packing ${String(closure.length)} workspace packages into runtime/node_modules...`)
+  await materializeClosure(closure)
 
-  // 8. Write LICENSE
-  const licenseContent = `NEXUS Harness Distribution License
+  // 3. Drop type declarations, source maps, and build state; nothing reads them at runtime.
+  walkFiles(RUNTIME_DIR, (path) => {
+    if (RUNTIME_PRUNE_PATTERN.test(path)) rmSync(path)
+  })
+
+  // 4. External dependencies: declared by the closure AND referenced by the shipped files.
+  const referenced = new Set<string>()
+  walkFiles(RUNTIME_MODULES_DIR, (path) => {
+    if (!REFERENCE_SCAN_PATTERN.test(path)) return
+    for (const name of collectReferencedPackages(readFileSync(path, 'utf8'))) referenced.add(name)
+  })
+  const plan = planExternalDependencies(closure, workspace, referenced, {
+    [NEXUS_CLI_PACKAGE]: NEXUS_CLI_FALLBACK_RANGE,
+  })
+  console.log(`Runtime dependencies: ${String(Object.keys(plan.dependencies).length)} required, ${String(Object.keys(plan.optionalDependencies).length)} optional.`)
+  if (plan.pruned.length > 0) console.log(`Pruned (declared, never referenced): ${plan.pruned.join(', ')}`)
+  for (const conflict of plan.conflicts) console.warn(`⚠️  range conflict, highest minimum wins — ${conflict}`)
+
+  // 5. Minify & obfuscate the shipped JavaScript.
+  const minify = minifyRuntime(loadEsbuild())
+  console.log(`✅ Minified ${String(minify.minified)} runtime JavaScript files.`)
+  if (minify.failed.length > 0) {
+    throw new Error(`package-npm-harness: esbuild could not minify ${String(minify.failed.length)} file(s): ${minify.failed.slice(0, 10).join(', ')}`)
+  }
+
+  // 6. Launchers.
+  const binDir = join(PKG_DIR, 'bin')
+  rmSync(binDir, { recursive: true, force: true })
+  mkdirSync(binDir, { recursive: true })
+  for (const [file, content] of [['nexus-harness.js', HARNESS_LAUNCHER_SOURCE], ['nexus.js', NEXUS_FORWARDER_SOURCE]] as const) {
+    writeFileSync(join(binDir, file), content, 'utf8')
+    chmodSync(join(binDir, file), 0o755)
+  }
+
+  // 7. Manifest; engines follow the repository root, which is what the runtime is built and tested against.
+  const rootEngines = (readJson(join(REPO_ROOT, 'package.json')).engines as { node?: unknown } | undefined)?.node
+  if (typeof rootEngines !== 'string') throw new Error('package-npm-harness: root package.json has no engines.node')
+  const manifest = buildHarnessManifest({
+    engines: rootEngines,
+    dependencies: plan.dependencies,
+    optionalDependencies: plan.optionalDependencies,
+  })
+  writeFileSync(join(PKG_DIR, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
+
+  // 8. LICENSE is generated; README.md is maintained by hand in apps/nexus-harness.
+  writeFileSync(join(PKG_DIR, 'LICENSE'), LICENSE_TEXT, 'utf8')
+  if (!existsSync(join(PKG_DIR, 'README.md'))) throw new Error('package-npm-harness: apps/nexus-harness/README.md is missing')
+
+  console.log(`Runtime size: ${(directorySize(RUNTIME_DIR) / 1024 / 1024).toFixed(1)} MB`)
+  console.log(`✅ ${HARNESS_PACKAGE_NAME} successfully packaged at apps/nexus-harness`)
+}
+
+const LICENSE_TEXT = `NEXUS Harness Distribution License
 ==================================
 
 Copyright (c) 2026 Glenhalton Takor / GDA Africa. All Rights Reserved.
@@ -285,59 +637,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 --------------------------------------------------------------------------------
 `
-  writeFileSync(join(PKG_DIR, 'LICENSE'), licenseContent, 'utf8')
-
-  // 9. Write README.md
-  const readmeContent = `# @nexus-framework/harness
-
-> The official AI-Native Execution Harness and Web Interface for the NEXUS Framework.
-
-## Overview
-
-\`@nexus-framework/harness\` provides the complete execution environment, interactive web interface, terminal runner, and Cordis plugin architecture for NEXUS projects.
-
-## Quick Start
-
-### Via NEXUS CLI (Recommended)
-
-When you have \`@nexus-framework/cli\` installed, simply run inside any NEXUS project:
-
-\`\`\`bash
-nexus harness
-\`\`\`
-
-This automatically grounds the session in your project's Brain (\`.nexus/docs/index.md\`, active plans, and skills) and boots the web interface at \`http://localhost:3080\`.
-
-### Direct On-Demand Usage
-
-\`\`\`bash
-# Launch the web interface on port 3080
-npx -y @nexus-framework/harness web --port 3080
-
-# Launch with a specific port without auto-opening the browser
-npx -y @nexus-framework/harness web --port 8080 --no-open
-
-# Verify model context window and tool reliability
-npx -y @nexus-framework/harness verify ollama-local
-\`\`\`
-
-## Features
-
-- **Brain Synchronization**: Live chips displaying active plan status, project vitals, and orientation memory.
-- **Modern Web Dashboard**: Neural vector branding, dark mode, responsive layout, and real-time session tracking.
-- **Cordis Plugin Architecture**: Modular, extensible runtime with dynamic plugin loading.
-- **Multi-Model Support**: Direct support for DeepSeek, Claude, Codex, Ollama, and local OpenAI-compatible endpoints.
-
-## License
-
-Proprietary additions and modifications © 2026 GDA Africa & NEXUS Framework Contributors. All rights reserved.
-Upstream components © 2026 DeepSeek under the MIT License. See [LICENSE](LICENSE) for full legal text and third-party notices.
-`
-  writeFileSync(join(PKG_DIR, 'README.md'), readmeContent, 'utf8')
-
-  console.log('✅ @nexus-framework/harness successfully packaged at apps/nexus-harness')
-}
 
 if (import.meta.main || process.argv[1]?.endsWith('package-npm-harness.ts')) {
-  packageHarness()
+  await packageHarness()
 }

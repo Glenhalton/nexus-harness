@@ -331,7 +331,7 @@ export function apply(ctx: Context, config: Config): void {
     output: { schema: { type: 'json' }, render: asJson },
     presentCall: args => ({ card: 'generic', title: 'NEXUS: progress log', kind: 'other', rawInput: args }),
     execute: (args: Record<string, unknown>) =>
-      brainLogTool(brainCtx, args as Parameters<typeof brainLogTool>[1]).then(toJson),
+      brainLogTool(brainCtx, args as unknown as Parameters<typeof brainLogTool>[1]).then(toJson),
   }))
 
   ctx.tools.register(defineTool({
@@ -345,7 +345,7 @@ export function apply(ctx: Context, config: Config): void {
     output: { schema: { type: 'json' }, render: asJson },
     presentCall: args => ({ card: 'generic', title: 'NEXUS: plan verify', kind: 'other', rawInput: args }),
     execute: (args: Record<string, unknown>) =>
-      planVerifyTool(brainCtx, args as Parameters<typeof planVerifyTool>[1]).then(toJson),
+      planVerifyTool(brainCtx, args as unknown as Parameters<typeof planVerifyTool>[1]).then(toJson),
   }))
 
   ctx.tools.register(defineTool({

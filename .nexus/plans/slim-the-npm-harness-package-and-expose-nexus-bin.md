@@ -60,4 +60,22 @@ ship built output with runtime-only deps, and add `nexus` + `nexus-code` bins.
 - 2026-10-05T08:30:07.154Z — Bin clash, tested in temp prefixes with npm 11.6.2. CLI installed first, then the harness: EEXIST on bin/nexus and the harness install aborts. Harness first, then the CLI: EEXIST and the CLI install aborts. With `--force` the harness takes over `nexus`, but `npm rm -g` of the harness afterwards leaves NO `nexus` at all. Uninstalling the CLI before installing the harness works, and `nexus --version` prints 1.6.0 from the bundled CLI. Documented in apps/nexus-harness/README.md and knowledge.md.
 
 ## Evidence
-- (to be filled)
+Measured on macOS x64, Node 24.13.0, npm 11.6.2. Installs used a cold, per-run npm cache into a fresh `npm i -g --prefix <tmp>`.
+
+| Metric | Before (1.0.0 layout, 0c57dfc5ec) | After (5e512752e7) |
+|--------|-----------------------------------|--------------------|
+| Tarball (packed) | 27.6 MB | 10.3 MB |
+| Unpacked package | 105.6 MB | 33.8 MB |
+| Files in tarball | 14,255 | 2,473 |
+| `dependencies` | 71 (incl. vitest, @vitest/spy, typescript, tsx, @testing-library/*, electron-updater) | 44 required + 4 optional platform binaries |
+| Global install time (cold cache) | 214 s | 74 s |
+| Installed prefix size | 1.2 GB | 603 MB |
+| `nexus-harness --help`, first run | 1658 ms, **exit 1** (ERR_MODULE_NOT_FOUND) | 981 ms, exit 0 |
+| `nexus-harness --help`, warm median of 5 | 359 ms (to failure) | 182 ms |
+| `nexus-code --help`, warm median | n/a (no bin) | 133 ms |
+| `nexus --version`, warm median | n/a (no bin) | 685 ms (prints 1.6.0) |
+| `nexus-harness web --no-open --port <free>` | n/a (CLI cannot start) | boots; token URL returns 200 with index.html; ~2.6 s to URL (first boot on the machine took 63 s) |
+
+- npm 10 (`npx npm@10 pack --dry-run`) packs the same 2,473 files, so CI on Node 22 is fine.
+- Tests: `npx vitest run scripts/package-npm-harness.spec.ts` passes 34 tests. `tsc -b tsconfig.host.json` exits 0, and oxlint on the new script and spec exits 0.
+- Bin clash: see the Notes entry dated 2026-10-05T08:30:07.154Z, apps/nexus-harness/README.md, and knowledge.md.

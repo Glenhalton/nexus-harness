@@ -29,16 +29,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build libraries
+        run: pnpm run build:lib
+
       - name: Build Web Frontend
         run: pnpm run build:web
 
       - name: Package @nexus-framework/harness
         run: pnpm run package:harness
 
-      - name: Verify CLI executable
+      - name: Smoke test packed tarball in a temporary global prefix
         run: |
-          node apps/nexus-harness/bin/nexus-harness.js --version || true
-          node apps/nexus-harness/bin/nexus-harness.js --help
+          PREFIX="$(mktemp -d)"
+          (cd apps/nexus-harness && npm pack --pack-destination "$PREFIX")
+          npm i -g --prefix "$PREFIX" --no-audit --no-fund "$PREFIX"/nexus-framework-harness-*.tgz
+          "$PREFIX/bin/nexus-harness" --version
+          "$PREFIX/bin/nexus-code" --help
+          "$PREFIX/bin/nexus" --version
 
   publish:
     name: Publish @nexus-framework/harness to npm
@@ -90,6 +97,7 @@ jobs:
       - name: Build and Package
         if: steps.version.outputs.changed == 'true'
         run: |
+          pnpm run build:lib
           pnpm run build:web
           pnpm run package:harness
 

@@ -209,7 +209,7 @@ export function formatFailureMessage(
 
   if (category === 'stream_interrupted') {
     return {
-      display: t('message.failure.streamTruncated'),
+      display: t('message.failure.streamTruncated' as never),
       extractedCode,
       rawJson,
       category,
