@@ -18,24 +18,30 @@ This puts these commands on your `PATH`:
 
 | Command | What it runs |
 |---------|--------------|
-| `nexus` | The NEXUS CLI (`@nexus-framework/cli`, bundled with the harness) |
+| `nexus` | The NEXUS CLI: the newest of a global `@nexus-framework/cli` and the copy bundled with the harness |
 | `nexus-code` | The harness CLI |
 | `nexus-harness` | The harness CLI (same as `nexus-code`) |
 | `harness`, `dsh` | Compatibility aliases for the harness CLI |
 
-### Already have `@nexus-framework/cli` installed globally?
+### Using it alongside `@nexus-framework/cli`
 
-Both packages provide a `nexus` command, and npm will not let two global packages own the same command. If `@nexus-framework/cli` is installed first, `npm i -g @nexus-framework/harness` stops with `EEXIST: file already exists ... bin/nexus` and installs nothing. In the other order, installing the CLI after the harness fails the same way.
+You can install the harness and the standalone CLI globally together, in either order. They share one `nexus` command and never fail with `EEXIST`:
 
-The harness already includes the NEXUS CLI, so the fix is to uninstall the standalone CLI first:
+- **`@nexus-framework/cli` owns `nexus` on npm.** The harness does not declare a `nexus` bin. If no `nexus` exists yet, the harness adds one after install: a small placeholder package at `<global node_modules>/@nexus-framework/cli` (version `0.0.0-harness-stub`, marked `"nexusOwner": "@nexus-framework/harness"`) plus the link npm would create for it. If the postinstall did not run (`--ignore-scripts`, pnpm, or yarn), the first `nexus-code` start adds it instead. For pnpm and yarn, it writes a marked shim next to `nexus-code`, and only when no `nexus` is on your `PATH`.
+- **Installing the CLI later just replaces the placeholder.** npm accepts it like any other package upgrade, so `npm i -g @nexus-framework/cli` works without `--force`. The harness never overwrites a `nexus` it did not create.
+- **The newest CLI answers.** Whichever install runs `nexus` compares its CLI version with the other install's and runs the newer one. So installing either package works like an upgrade (or a downgrade) of the same command. `nexus --version` shows which install answered: a plain version means the standalone CLI, and `1.6.0 (via @nexus-framework/harness)` means the harness's bundled copy. Set `NEXUS_BIN_DELEGATED=1` to turn the handoff off for one run.
 
-```bash
-npm uninstall -g @nexus-framework/cli
-npm i -g @nexus-framework/harness
-nexus --version   # now served by the harness's bundled CLI
-```
+What happens when you uninstall one of them:
 
-Avoid `npm i -g --force @nexus-framework/harness`. It does point `nexus` at the harness, but if you later uninstall the harness, `nexus` disappears completely, even though the standalone CLI is still installed. If that happens, run `npm i -g @nexus-framework/cli` again to get the command back.
+| You uninstall | `nexus` afterwards |
+|---------------|--------------------|
+| The harness (the CLI stays) | The standalone CLI keeps answering. |
+| The CLI (the harness stays) | npm removes `nexus` with the CLI. It comes back, served by the harness, the next time `nexus-code` starts (or after `npm i -g @nexus-framework/harness`). |
+| The harness, when it was the only one | The placeholder stays and prints how to get the CLI back. Run `npm i -g @nexus-framework/cli`, or `npm uninstall -g @nexus-framework/cli` to remove the placeholder too. |
+
+`npm ls -g` lists the placeholder as `@nexus-framework/cli@0.0.0-harness-stub`, and `npm update -g` replaces it with the real CLI. That is fine, because the newest CLI answers either way.
+
+Nexus Desktop's "Add nexus to Terminal" puts `~/.nexus/bin` first on your `PATH`. Its `nexus` (the CLI bundled with the app) answers before any npm global, whatever their versions.
 
 ## Quick Start
 
