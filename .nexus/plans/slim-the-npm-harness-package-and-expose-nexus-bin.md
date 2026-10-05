@@ -4,14 +4,14 @@ id: "slim-the-npm-harness-package-and-expose-nexus-bin"
 title: "Slim the npm harness package and expose nexus bin"
 status: "in_progress"
 created: "2026-10-03"
-updated: "2026-10-03"
+updated: "2026-10-05"
 owner: "nexus-implementer"
 source: "manual:refactor"
-type: "refactor"
 parent: null
 estimate: "2d"
 phase: "refactor"
 tags: ["refactor"]
+type: "refactor"
 ---
 ## Goal
 Make `@nexus-framework/harness` on npm fast to install and start: ship prebuilt JS instead of
@@ -45,16 +45,37 @@ ship built output with runtime-only deps, and add `nexus` + `nexus-code` bins.
 - [ ] Tarball size and cold-start time before/after recorded in Evidence.
 
 ## Steps
-- [ ] Measure baseline: tarball size, install time, `--help` cold start
-- [ ] Switch packaging to use built `lib/` output (tsdown) instead of TS sources + tsx
-- [ ] Compute runtime deps from the built bundle; prune package.json deps in the generator script
-- [ ] Add `nexus` and `nexus-code` bins (thin forwarders) and align `engines`
-- [ ] Smoke test: pack → install into temp global prefix → run all bins
-- [ ] Update `apps/nexus-harness/README.md`
-- [ ] Tests for the packaging script + validation commands
+- [x] Measure baseline: tarball size, install time, `--help` cold start
+- [x] Switch packaging to use built `lib/` output (tsdown) instead of TS sources + tsx
+- [x] Compute runtime deps from the built bundle; prune package.json deps in the generator script
+- [x] Add `nexus` and `nexus-code` bins (thin forwarders) and align `engines`
+- [x] Smoke test: pack → install into temp global prefix → run all bins
+- [x] Update `apps/nexus-harness/README.md`
+- [x] Tests for the packaging script + validation commands
 
 ## Notes
 - (none yet)
+- 2026-10-05T08:10:49.265Z — Baseline (master 0c57dfc5ec plus build fix 1ee85d75ca, macOS x64, Node 24.13, npm 11.6.2): npm pack gives 27.6 MB packed, 105.6 MB unpacked, 14,255 files. Cold-cache `npm i -g --prefix tmp` took 214 s and used 1.2 GB (1.1 GB of it in node_modules). `nexus-harness --help` FAILS with ERR_MODULE_NOT_FOUND '@deepseek-ai/dsh-app-boot' (first run 1658 ms, median 359 ms to failure). tsx does not apply tsconfig `paths` to files under node_modules, so the published 1.0.0 layout cannot start from a global install at all. Bins: dsh, harness, nexus-harness.
+- 2026-10-05T08:30:07.122Z — Decisions: (1) The runtime is the workspace closure of @deepseek-ai/dsh plus the dsh-experimental-tool-nexus-brain and nexus-brain-context plugins (same rule as Desktop's prepare-package-set). Each package goes through `pnpm pack` and is unpacked into runtime/node_modules, because app-boot's profile resolver relies on Node's real node_modules lookup. (2) External deps = declared by the closure AND referenced by the shipped JS/YAML. Range conflicts take the highest minimum: chokidar ^4 vs ^5 resolves to ^5.0.0 (dsh-credentials-local declares ^4), and js-yaml and yaml are same-major bumps. (3) node-addon-system-{darwin,linux}-{x64,arm64} are os/cpu restricted, so they become npm optionalDependencies (~0.1.2, already on npm). (4) The launcher imports lib/bin.js in-process and calls runCli() with argv[1] set to the real entry, so there is no tsx and no second Node process. (5) apps/nexus-harness is excluded from pnpm-workspace.yaml. It is a generated npm package, and the lockfile importer churned on every regeneration. (6) README.md is now maintained by hand; only LICENSE is still generated. (7) Prerequisite fix 1ee85d75ca: master did not pass build:lib (tool-nexus-brain casts, ui-chat locale key, ui-nexus-brain-indicator exactOptionalPropertyTypes).
+- 2026-10-05T08:30:07.154Z — Bin clash, tested in temp prefixes with npm 11.6.2. CLI installed first, then the harness: EEXIST on bin/nexus and the harness install aborts. Harness first, then the CLI: EEXIST and the CLI install aborts. With `--force` the harness takes over `nexus`, but `npm rm -g` of the harness afterwards leaves NO `nexus` at all. Uninstalling the CLI before installing the harness works, and `nexus --version` prints 1.6.0 from the bundled CLI. Documented in apps/nexus-harness/README.md and knowledge.md.
 
 ## Evidence
-- (to be filled)
+Measured on macOS x64, Node 24.13.0, npm 11.6.2. Installs used a cold, per-run npm cache into a fresh `npm i -g --prefix <tmp>`.
+
+| Metric | Before (1.0.0 layout, 0c57dfc5ec) | After (5e512752e7) |
+|--------|-----------------------------------|--------------------|
+| Tarball (packed) | 27.6 MB | 10.3 MB |
+| Unpacked package | 105.6 MB | 33.8 MB |
+| Files in tarball | 14,255 | 2,473 |
+| `dependencies` | 66 (incl. vitest, @vitest/spy, typescript, tsx, @testing-library/*, electron-updater) | 44 required + 4 optional platform binaries |
+| Global install time (cold cache) | 214 s | 74 s |
+| Installed prefix size | 1.2 GB | 603 MB |
+| `nexus-harness --help`, first run | 1658 ms, **exit 1** (ERR_MODULE_NOT_FOUND) | 981 ms, exit 0 |
+| `nexus-harness --help`, warm median of 5 | 359 ms (to failure) | 182 ms |
+| `nexus-code --help`, warm median | n/a (no bin) | 133 ms |
+| `nexus --version`, warm median | n/a (no bin) | 685 ms (prints 1.6.0) |
+| `nexus-harness web --no-open --port <free>` | n/a (CLI cannot start) | boots; token URL returns 200 with index.html; ~2.6 s to URL (first boot on the machine took 63 s) |
+
+- npm 10 (`npx npm@10 pack --dry-run`) packs the same 2,473 files, so CI on Node 22 is fine.
+- Tests: `npx vitest run scripts/package-npm-harness.spec.ts` passes 34 tests. `tsc -b tsconfig.host.json` exits 0, and oxlint on the new script and spec exits 0.
+- Bin clash: see the Notes entry dated 2026-10-05T08:30:07.154Z, apps/nexus-harness/README.md, and knowledge.md.
