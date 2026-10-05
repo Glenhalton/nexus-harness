@@ -69,6 +69,15 @@
     - id: ui-open-in-app
       name: '@deepseek-ai/dsh-client-ui-open-in-app'
 
+    # One-click NEXUS setup for a folder without `.nexus/`: host status/init
+    # routes over the bundled NEXUS CLI, plus the Session-header prompt. The
+    # Desktop welcome window calls the same routes.
+    - id: nexus-setup
+      name: '@deepseek-ai/dsh-host-nexus-setup'
+
+    - id: ui-nexus-setup
+      name: '@deepseek-ai/dsh-client-ui-nexus-setup'
+
     - id: workspace
       name: '@deepseek-ai/dsh-workspace'
 

@@ -444,6 +444,7 @@
     { "path": "./packages/host/directory-picker-native" },
     { "path": "./packages/host/frontend-static" },
     { "path": "./packages/host/open-in-app" },
+    { "path": "./packages/host/nexus-setup" },
     { "path": "./packages/host/plugin-inventory" },
     { "path": "./packages/boot/plugin-manager" },
     { "path": "./packages/llm/plugin-package-inventory-deepseek" },
