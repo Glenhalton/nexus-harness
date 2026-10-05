@@ -166,6 +166,7 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/client/ui-open-in-app': { kind: 'none', reason: 'Browser-side split button opening the workspace directory for a human; registers nothing model-facing.' },
   'packages/host/nexus-setup': { kind: 'none', reason: 'Host routes scaffolding .nexus/ for a human; registers nothing model-facing.' },
   'packages/client/ui-nexus-setup': { kind: 'none', reason: 'Browser-side setup prompt for a human; registers nothing model-facing.' },
+  'packages/client/ui-nexus-brain-indicator': { kind: 'none', reason: 'Browser-side status chip and plan tab reading context another package injects; registers nothing model-facing.' },
   'packages/bundle/base': { kind: 'indirect', reason: 'The bundle is a patch-list carrier; each inserted row\'s package owns its model-facing behavior.' },
   'packages/bundle/headless': { kind: 'none', reason: 'The one-shot runner submits the task as an ordinary user message; prompts and tools belong to the composed base and headless bundles.' },
   'packages/llm/llm': { kind: 'none', reason: 'The adapter registry forwards already-assembled requests unchanged.' },

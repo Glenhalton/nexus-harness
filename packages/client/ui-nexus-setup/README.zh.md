@@ -34,7 +34,7 @@ kind: "package-reference"
 <details>
 <summary>实现细节——点击展开</summary>
 
-一个页面生命周期的 controller（[`src/client/controller.ts`](src/client/controller.ts)）对每个文件夹只读取一次状态，并负责设置 POST；每个文件夹的阶段（`checking`、`needs-setup`、`setting-up`、`failed`、`ready`、`missing`、`unavailable`、`dismissed`）通过一个 snapshot store 发布，组件经 inject 的 `hooks` 隔间接收它。组件通过 `useSessions` 读取会话的 `cwd`，只在 `needs-setup`、`setting-up` 与 `failed` 阶段渲染。路由形式来自主机包浏览器安全的 `./shared` 子路径。
+一个页面生命周期的 controller（[`src/client/controller.ts`](src/client/controller.ts)）对每个文件夹只读取一次状态，并负责设置 POST；每个文件夹的阶段（`checking`、`needs-setup`、`setting-up`、`failed`、`ready`、`missing`、`unavailable`、`dismissed`）通过一个 snapshot store 发布，组件经 inject 的 `hooks` 隔间接收它。组件通过 `useSessions` 读取会话的 `cwd`，只在 `needs-setup`、`setting-up` 与 `failed` 阶段渲染。哪个会话的对话框处于打开状态也由 controller 保存，因此其他界面也能打开它。插件提供 `nexusSetup` 服务（`phases`、`check`、`openDialog`）；[`ui-nexus-brain-indicator`](../ui-nexus-brain-indicator/README.zh.md) 在任何一轮之前从中读取文件夹状态，并在设置成功时刷新。路由形式来自主机包浏览器安全的 `./shared` 子路径。
 
 </details>
 
@@ -54,7 +54,6 @@ kind: "package-reference"
 <a id="known-limitations-and-deferred-work"></a>
 
 - **每个页面对每个文件夹只读取一次状态。** 在应用外创建的 `.nexus/`（例如在终端运行 `nexus init`）会在重新加载后隐藏按钮。
-- **Brain 状态标签随下一轮更新。** [`ui-nexus-brain-indicator`](../ui-nexus-brain-indicator/) 的状态来自下一轮注入的上下文，而不是本设置。
 
 <a id="dev-note"></a>
 ### 开发备注
@@ -66,4 +65,4 @@ kind: "package-reference"
 
 </details>
 
-**运行时不变量：** 不发布伴随包。插件注册一个词典 effect 与一个 slot 条目，HMR 安全测试证明其移除；文件夹阶段只存在于 controller 的 snapshot store 中。
+**运行时不变量：** 不发布伴随包。插件注册一个词典 effect、一个 slot 条目与 `nexusSetup` 服务，HMR 安全测试证明其移除；文件夹阶段与打开的对话框只存在于 controller 的 snapshot store 中。

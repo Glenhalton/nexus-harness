@@ -51,6 +51,7 @@ export function NexusPlanTab(props: NexusPlanTabProps): ReactNode {
   const toggleStep = (index: number) => {
     const updated = steps.map((s, i) => i === index ? { ...s, done: !s.done } : s)
     setLocalSteps(updated)
+    /* v8 ignore next -- index always names a rendered step; `?? false` only satisfies noUncheckedIndexedAccess. */
     props.tickStep?.(index, updated[index]?.done ?? false)
   }
 
@@ -60,7 +61,7 @@ export function NexusPlanTab(props: NexusPlanTabProps): ReactNode {
         <div className={css.titleRow}>
           <h2 className={css.planTitle}>
             <span>📋</span>
-            <span>{activePlan.title || `Plan #${activePlan.id}`}</span>
+            <span>{activePlan.title || t('tab.planFallback', { id: activePlan.id })}</span>
           </h2>
           <span className={css.statusPill}>{activePlan.status}</span>
         </div>
@@ -88,7 +89,7 @@ export function NexusPlanTab(props: NexusPlanTabProps): ReactNode {
         )}
 
         <div className={css.checklistSection}>
-          <div className={css.checklistHeader}>Action Checklist</div>
+          <div className={css.checklistHeader}>{t('tab.checklist')}</div>
           {steps.length > 0 ? (
             <ul className={css.checklist}>
               {steps.map((step, idx) => (
@@ -111,7 +112,7 @@ export function NexusPlanTab(props: NexusPlanTabProps): ReactNode {
               ))}
             </ul>
           ) : (
-            <div className={css.emptyNotice}>No checklist steps defined in this plan.</div>
+            <div className={css.emptyNotice}>{t('tab.noSteps')}</div>
           )}
         </div>
       </div>

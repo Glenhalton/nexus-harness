@@ -34,36 +34,32 @@
   box-shadow: 0 0 8px rgba(0, 212, 255, 0.25);
 }
 
-.statusDot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  corner-shape: round;
-  flex-shrink: 0;
+/* No evidence of a synced brain yet: the chip steps back to neutral ink. */
+.chipMuted {
+  background: transparent;
+  border-color: var(--dsw-alias-border-l2);
+  color: var(--dsw-alias-label-secondary);
 }
 
-.statusSynced {
-  background: #10b981;
-  box-shadow: 0 0 6px #10b981;
-}
-
-.statusDrift {
-  background: #f59e0b;
-  box-shadow: 0 0 6px #f59e0b;
-}
-
-.statusDisconnected {
-  background: #64748b;
+.chipMuted:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  border-color: var(--dsw-alias-border-l3);
 }
 
 .planText {
   color: #38bdf8;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .vitalsBadge {
   color: var(--dsw-alias-label-caption, #94a3b8);
   font-size: 10px;
+}
+
+.popoverHint {
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
 }
 
 .popover {
@@ -84,7 +80,7 @@
 
 .popoverTitle {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   color: #00d4ff;
   display: flex;
   align-items: center;
@@ -120,7 +116,7 @@
   border-radius: 4px;
   color: #38bdf8;
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
   text-align: center;
   transition: all 0.15s ease;

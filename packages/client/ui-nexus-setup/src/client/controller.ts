@@ -5,6 +5,7 @@ import {
   NEXUS_SETUP_INIT_ROUTE, NEXUS_SETUP_STATUS_ROUTE,
   type NexusSetupInitRequest, type NexusSetupStatusPayload,
 } from '@deepseek-ai/dsh-host-nexus-setup/shared'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 
 type Fetch = (input: string | URL, init?: RequestInit) => Promise<Response>
 
@@ -31,6 +32,9 @@ export type NexusSetupPhases = Readonly<Record<string, NexusSetupPhase>>
  */
 export class NexusSetupController {
   readonly phases: SnapshotStore<NexusSetupPhases> = createSnapshotStore<NexusSetupPhases>({})
+
+  /** Session whose setup dialog is open; one dialog at a time across every header. */
+  readonly dialog: SnapshotStore<SessionId | null> = createSnapshotStore<SessionId | null>(null)
 
   /** @param fetcher - HTTP carrier for the status read and the init POST. */
   constructor(private readonly fetcher: Fetch = (input, init) => fetch(input, init)) {}
@@ -90,6 +94,29 @@ export class NexusSetupController {
   dismiss(path: string): void {
     const current = this.phases.getSnapshot()[path]
     if (current === 'needs-setup' || current === 'failed') this.publish(path, 'dismissed')
+  }
+
+  /**
+   * Open the setup dialog in one Session's header. A folder hidden with
+   * "Not now" is offered again, because the user asked for it explicitly.
+   * @param sessionId - Session whose header shows the dialog.
+   * @param path - absolute folder path of that Session.
+   * @returns false when the folder is not one setup can be offered for.
+   */
+  openDialog(sessionId: SessionId, path: string): boolean {
+    const current = this.phases.getSnapshot()[path]
+    if (current === 'dismissed') this.publish(path, 'needs-setup')
+    else if (current !== 'needs-setup' && current !== 'failed' && current !== 'setting-up') return false
+    this.dialog.set(sessionId)
+    return true
+  }
+
+  /**
+   * Close the setup dialog when it belongs to this Session.
+   * @param sessionId - Session whose header asked to close it.
+   */
+  closeDialog(sessionId: SessionId): void {
+    if (this.dialog.getSnapshot() === sessionId) this.dialog.set(null)
   }
 
   private publish(path: string, phase: NexusSetupPhase): void {

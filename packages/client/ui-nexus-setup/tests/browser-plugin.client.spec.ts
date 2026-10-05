@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SlotRegistry } from '@deepseek-ai/dsh-client-ui-renderer/client'
 import { LocaleRuntime } from '@deepseek-ai/dsh-client-locale/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { apply, inject, type NexusSetupActionInjected } from '../src/client/index.ts'
 import { apply as nodeApply } from '../src/index.ts'
 import { NexusSetupAction } from '../src/client/NexusSetupAction.tsx'
@@ -53,8 +54,30 @@ describe('ui-nexus-setup browser half', () => {
     await face.check('/v')
     face.dismiss('/v')
     expect(face.hooks.nexusSetupPhases.getSnapshot()).toEqual({ '/w': 'ready', '/v': 'dismissed' })
+    face.openDialog('s' as SessionId, '/v')
+    expect(face.hooks.nexusSetupDialog.getSnapshot()).toBe('s')
+    face.closeDialog('s' as SessionId)
+    expect(face.hooks.nexusSetupDialog.getSnapshot()).toBeNull()
     await fiber.dispose()
     expect(ctx.slots.entries('conversation.session.header.utilities')).toHaveLength(0)
+  })
+
+  it('provides the nexusSetup service over the same folder state as the header', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL) => new Response(JSON.stringify(
+      String(input).startsWith('nexus-setup/status') ? { state: 'needs-setup' } : { state: 'ready', created: true },
+    ))))
+    const { ctx, fiber } = await bench()
+    const service = ctx.nexusSetup
+    const face = (ctx.slots.entries('conversation.session.header.utilities')[0]?.inject as unknown as () => NexusSetupActionInjected)()
+    const seen: unknown[] = []
+    service.phases.subscribe(() => { seen.push(service.phases.getSnapshot()['/w']) })
+    await service.check('/w')
+    expect(service.openDialog('s' as SessionId, '/w')).toBe(true)
+    expect(face.hooks.nexusSetupDialog.getSnapshot()).toBe('s')
+    expect(await face.setUp('/w')).toBe(true)
+    expect(seen).toEqual(['checking', 'needs-setup', 'setting-up', 'ready'])
+    expect(service.openDialog('s' as SessionId, '/w')).toBe(false)
+    await fiber.dispose()
   })
 
   it('registers both dictionaries and releases them with the fiber', async () => {

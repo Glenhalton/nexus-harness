@@ -2,6 +2,9 @@
  * Nexus Brain & Context Indicators:
  * - Header Brain Status Chip in conversation.session.header.utilities
  * - Interactive Nexus Plan Tab in the right sidebar
+ *
+ * The chip reads the folder's NEXUS status through the optional `nexusSetup`
+ * service before any turn, and the injected NEXUS context once turns happen.
  */
 import type { Context as ClientContext } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
@@ -9,15 +12,18 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import type {} from '@deepseek-ai/dsh-client-ui-chat/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
+import type {} from '@deepseek-ai/dsh-client-ui-nexus-setup/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { NS, en, zh, type NexusBrainIndicatorKey } from './locales.ts'
 import { NEXUS_PLAN_ID, nexusPlanDefinition } from './plan-tab/definition.tsx'
 import { NexusPlanTab, type ActivePlanData } from './plan-tab/NexusPlanTab.tsx'
 import { NexusPlanTitle } from './plan-tab/NexusPlanTitle.tsx'
-import { NexusBrainStatusChip, type BrainState, type NexusBrainChipInjected } from './NexusBrainStatusChip.tsx'
+import { NexusBrainStatusChip, type NexusBrainChipInjected } from './NexusBrainStatusChip.tsx'
+import type { TurnBrainState } from './brain-status.ts'
+import { createNexusSetupLink } from './setup-link.ts'
 
 export type { NexusBrainIndicatorKey } from './locales.ts'
-export type { BrainState } from './NexusBrainStatusChip.tsx'
+export type { BrainState, BrainStatus, TurnBrainState } from './brain-status.ts'
 export type { ActivePlanData, PlanStep } from './plan-tab/NexusPlanTab.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -28,16 +34,19 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
 
 export const inject = ['slots', 'locale', 'sidebarRightTabs', 'sidebarRight', 'uiConversation', 'sessions']
 
-/** Helper to extract brain and plan state from the latest session chat nodes. */
+/**
+ * Extract brain and plan state from the latest NEXUS context in the Session's chat.
+ * @returns `state` null when no turn has carried NEXUS context yet.
+ */
 export function extractBrainFromSession(
   ctx: ClientContext,
   sessionId: SessionId,
-): { state: BrainState; planData: ActivePlanData | null } {
+): { state: TurnBrainState | null; planData: ActivePlanData | null } {
   try {
     const bound = ctx.uiConversation.binding(sessionId)
     const chatSource = bound.target('chat')
     const snapshot = chatSource.getSnapshot()
-    if (!snapshot) return { state: { status: 'disconnected' }, planData: null }
+    if (!snapshot) return { state: null, planData: null }
 
     const nodes = snapshot.legacy.nodes
     for (let i = nodes.length - 1; i >= 0; i--) {
@@ -109,7 +118,8 @@ export function extractBrainFromSession(
   } catch {
     // binding error fallback
   }
-  return { state: { status: 'synced' }, planData: null }
+  // No NEXUS context yet: the folder status decides what the chip shows.
+  return { state: null, planData: null }
 }
 
 export function apply(ctx: ClientContext): void {
@@ -136,14 +146,26 @@ export function apply(ctx: ClientContext): void {
     key: NEXUS_PLAN_ID,
   }, NexusPlanTitle)), 'ui-nexus-brain-indicator: plan tab title')
 
-  // 4. Register Header Brain Status Chip
+  // 4. Folder status through the optional setup plugin: without it the chip
+  // still renders and reports "unknown" until a turn carries NEXUS context.
+  const setup = createNexusSetupLink()
+  ctx.inject(['nexusSetup'], (scope: ClientContext) => {
+    scope.effect(() => setup.attach(scope.nexusSetup), 'ui-nexus-brain-indicator: setup status link')
+  })
+  const checkWorkspace = (path: string): void => { setup.check(path) }
+  const openSetup = (sessionId: SessionId, path: string): boolean => setup.openSetup(sessionId, path)
+
+  // 5. Register Header Brain Status Chip
   ctx.effect(() => ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
     name: 'conversation.session.header.utilities',
     id: 'nexus-brain-status',
     order: -5,
     locale: NS,
     inject: (_sessionId: SessionId): NexusBrainChipInjected => ({
+      hooks: { nexusSetupPhases: setup.phases },
       getBrainState: sid => extractBrainFromSession(ctx, sid).state,
+      checkWorkspace,
+      openSetup,
       openPlanTab: () => {
         try {
           ctx.sidebarRight.openTab('nexus-plan')

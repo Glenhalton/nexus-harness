@@ -1,6 +1,7 @@
 /** Setup state machine: status mapping, once-per-folder reads, setup transitions, and dismissal. */
 
 import { describe, expect, it, vi } from 'vitest'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import { NexusSetupController } from '../src/client/controller.ts'
 
 const json = (body: unknown, status = 200): Response => new Response(JSON.stringify(body), { status })
@@ -82,5 +83,26 @@ describe('NexusSetupController', () => {
     } finally {
       vi.unstubAllGlobals()
     }
+  })
+
+  it('opens one dialog at a time for an offered folder, re-offering a dismissed one', async () => {
+    const controller = new NexusSetupController(vi.fn(async (input: string | URL) =>
+      json({ state: String(input).includes('ready') ? 'ready' : 'needs-setup' })))
+    const a = 'a' as SessionId
+    const b = 'b' as SessionId
+    await controller.check('/w')
+    await controller.check('/ready')
+    expect(controller.openDialog(a, '/ready')).toBe(false)
+    expect(controller.openDialog(a, '/unknown')).toBe(false)
+    expect(controller.dialog.getSnapshot()).toBeNull()
+    controller.dismiss('/w')
+    expect(controller.openDialog(a, '/w')).toBe(true)
+    expect(controller.phases.getSnapshot()['/w']).toBe('needs-setup')
+    expect(controller.openDialog(b, '/w')).toBe(true)
+    expect(controller.dialog.getSnapshot()).toBe(b)
+    controller.closeDialog(a)
+    expect(controller.dialog.getSnapshot()).toBe(b)
+    controller.closeDialog(b)
+    expect(controller.dialog.getSnapshot()).toBeNull()
   })
 })

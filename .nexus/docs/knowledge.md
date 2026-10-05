@@ -59,3 +59,6 @@ GitHub redirects that path to the newest published non-prerelease release, so fe
 
 ### [gotcha] lefthook Pre-Commit Can Drop Unstaged Changes In A Worktree
 **2026-10-05** — When the staged lint auto-fixes a file that also has unstaged edits, lefthook fails to re-apply its stashed unstaged patch and the unstaged edits are lost. Stage everything you mean to keep (or commit it) before running `git commit`.
+
+### [pattern] Optional cross-plugin client service: ctx.inject sub-fiber plus a relay observable
+**2026-10-05** — Cordis has no optional inject, so a client plugin that must render with or without another plugin's service (the brain chip and `nexusSetup`) binds it in `ctx.inject(['svc'], scope => scope.effect(() => link.attach(scope.svc)))`. It hands components one stable relay observable through the inject `hooks` compartment that reads `null` while the service is absent. The relay replays requests made before the service arrived; see `packages/client/ui-nexus-brain-indicator/src/client/setup-link.ts`.
