@@ -3,7 +3,7 @@ import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   app,
   BrowserWindow,
@@ -48,6 +48,10 @@ import { DesktopPolicyTestAuth } from './policy-test-auth.ts'
 import { DesktopUpdateDialog, type UpdateDialogOptions } from './update-dialog.ts'
 import { readDesktopRuntime } from './runtime-tree.ts'
 import { DesktopBrowserGuests } from './browser-guests.ts'
+import { configureTerminalCommands, TERMINAL_COMMANDS_IPC, type TerminalCommandsStatus } from './terminal-commands.ts'
+
+/** Public download page for builds that cannot install updates in place. */
+const NEXUS_RELEASES_PAGE = 'https://github.com/GDA-Africa/nexus-harness/releases/latest'
 
 let focusPrimaryWindow = (): void => {}
 let stopForRecovery = async (): Promise<void> => {}
@@ -297,6 +301,62 @@ async function main(): Promise<void> {
   const resources = runtimeResources()
   const paths = resolveDesktopPaths()
   const development = !app.isPackaged
+  // The application menu is built later in startup; until then a status change has nothing to redraw.
+  let refreshTerminalMenu = (): void => {}
+  // Unsigned macOS builds cannot pass Squirrel.Mac's signature check, so an available update opens the
+  // GitHub Releases page instead of downloading.
+  const shellManifest: unknown = JSON.parse(await readFile(join(app.getAppPath(), 'package.json'), 'utf8'))
+  const manualUpdates = typeof shellManifest === 'object' && shellManifest !== null
+    && 'nexusManualUpdates' in shellManifest && shellManifest.nexusManualUpdates === true
+  let terminalCommandsInstalled = false
+  const terminalCommands = configureTerminalCommands({
+    platform: process.platform,
+    home: app.getPath('home'),
+    executable: process.execPath,
+    runtimeDir: resources.dsh,
+    stateDir: app.getPath('userData'),
+    currentPath: process.env.PATH,
+  })
+  const terminalCommandSenders = new Set([pathToFileURL(join(app.getAppPath(), 'renderer', 'welcome.html')).href])
+  const assertTerminalCommandsSender = (event: IpcMainInvokeEvent): void => {
+    const url = event.senderFrame?.url
+    if (url !== undefined && terminalCommandSenders.has(url.split(/[?#]/u)[0] ?? '')) return
+    assertDesktopSender(event, ['app', 'shell'])
+  }
+  const terminalCommandsOperation = (operation: () => Promise<TerminalCommandsStatus>) => async (event: IpcMainInvokeEvent) => {
+    assertTerminalCommandsSender(event)
+    const status = await operation()
+    syncTerminalCommandsMenu(status)
+    return status
+  }
+  ipcMain.handle(TERMINAL_COMMANDS_IPC.status, terminalCommandsOperation(() => terminalCommands.status()))
+  ipcMain.handle(TERMINAL_COMMANDS_IPC.install, terminalCommandsOperation(() => terminalCommands.install()))
+  ipcMain.handle(TERMINAL_COMMANDS_IPC.remove, terminalCommandsOperation(() => terminalCommands.remove()))
+  const syncTerminalCommandsMenu = (status: TerminalCommandsStatus): void => {
+    if (status.installed === terminalCommandsInstalled) return
+    terminalCommandsInstalled = status.installed
+    refreshTerminalMenu()
+  }
+  // Packaged launches keep the shims pointed at this installation unless the user removed them.
+  if (!development) {
+    void terminalCommands.ensure().then(syncTerminalCommandsMenu)
+      .catch((error: unknown) => { console.error('terminal commands:', error) })
+  } else {
+    void terminalCommands.status().then(syncTerminalCommandsMenu)
+      .catch((error: unknown) => { console.error('terminal commands:', error) })
+  }
+  const toggleTerminalCommands = async (): Promise<void> => {
+    const status = terminalCommandsInstalled ? await terminalCommands.remove() : await terminalCommands.install()
+    terminalCommandsInstalled = status.installed
+    refreshTerminalMenu()
+    const messages = currentDesktopLocale().messages
+    if (status.blockedReason === 'translocated') {
+      await dialog.showMessageBox({ type: 'info', message: messages.terminalCommandsBlocked, detail: messages.terminalCommandsBlockedDetail })
+    } else if (status.installed) {
+      await dialog.showMessageBox({ type: 'info', message: messages.terminalCommandsInstalled,
+        detail: formatDesktopMessage(messages.terminalCommandsInstalledDetail, { binDir: status.binDir }) })
+    }
+  }
   const primaryRuntime = development
     ? developmentPrimaryRuntime()
     : join(process.resourcesPath, 'runtime', 'primary-runtime')
@@ -715,6 +775,13 @@ async function main(): Promise<void> {
           return
         }
         if (state.phase !== 'available' && !(state.phase === 'error' && state.failedOperation === 'download')) return
+        if (manualUpdates) {
+          const result = await ordinaryMessageBox({ title: locale.messages.updateManualTitle, message: locale.messages.updateAvailable,
+            detail: formatDesktopMessage(locale.messages.updateManualDetail, { version: state.version ?? '' }),
+            buttons: [locale.messages.updateManualOpen, locale.messages.later], cancelId: 1 })
+          if (result.response === 0) await shell.openExternal(NEXUS_RELEASES_PAGE)
+          return
+        }
         if (manual) {
           const result = await ordinaryMessageBox({ title: locale.messages.updateCheckTitle, message: locale.messages.updateAvailable,
             detail: formatDesktopMessage(locale.messages.updateDetail, { version: state.version ?? '' }),
@@ -798,7 +865,7 @@ async function main(): Promise<void> {
   })
 
   app.setAboutPanelOptions({
-    applicationName: 'DeepSeek Harness',
+    applicationName: 'Nexus Harness',
     applicationVersion: app.getVersion(),
     // The release has no separate build number; omit Electron's bundle version.
     version: '',
@@ -827,6 +894,9 @@ async function main(): Promise<void> {
       : { label: currentDesktopLocale().messages.aboutMenu, role: 'about' },
     { type: 'separator' },
     { label: currentDesktopLocale().messages.checkUpdatesMenu, click: () => { void openUpdatePrompt(true) } },
+    { label: terminalCommandsInstalled ? currentDesktopLocale().messages.removeTerminalCommandsMenu
+      : currentDesktopLocale().messages.addTerminalCommandsMenu,
+    click: () => { void toggleTerminalCommands().catch((error: unknown) => { console.error('terminal commands:', error) }) } },
     ...development ? [
       { type: 'separator' as const },
       { label: currentDesktopLocale().messages.reloadPageMenu, role: 'reload' as const },
@@ -852,6 +922,7 @@ async function main(): Promise<void> {
     }, ...platformMenus]))
   }
   installMenu()
+  refreshTerminalMenu = installMenu
 
   if (process.platform === 'win32') {
     ipcMain.handle(DESKTOP_IPC.windowsMenu, (event, name: unknown, x: unknown, y: unknown) => {

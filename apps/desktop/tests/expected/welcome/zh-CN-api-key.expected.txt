@@ -1,7 +1,7 @@
-DeepSeek Harness
-DeepSeek Harness
+Nexus Harness
+Nexus Harness
 添加一个 API Key 开始使用
-配置 DeepSeek 官方模型，即可开始使用
+添加 DeepSeek API 密钥，即可开始使用 Nexus Harness
 输入 API 密钥 [password]
 保存并继续 [disabled]
 稍后配置
