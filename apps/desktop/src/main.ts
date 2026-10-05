@@ -51,7 +51,7 @@ import { DesktopBrowserGuests } from './browser-guests.ts'
 import { configureTerminalCommands, TERMINAL_COMMANDS_IPC, type TerminalCommandsStatus } from './terminal-commands.ts'
 
 /** Public download page for builds that cannot install updates in place. */
-const NEXUS_RELEASES_PAGE = 'https://github.com/GDA-Africa/nexus-harness/releases/latest'
+const NEXUS_RELEASES_PAGE = 'https://github.com/Glenhalton/nexus-harness/releases/latest'
 
 let focusPrimaryWindow = (): void => {}
 let stopForRecovery = async (): Promise<void> => {}

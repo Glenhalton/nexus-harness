@@ -1,6 +1,6 @@
 {
   "name": "@nexus-framework/harness",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "NEXUS Harness: AI-Native Execution Harness and Web Interface (Proprietary / All Rights Reserved)",
   "publishConfig": {
     "access": "public"
@@ -21,7 +21,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/GDA-Africa/nexus-harness.git",
+    "url": "git+https://github.com/Glenhalton/nexus-harness.git",
     "directory": "apps/nexus-harness"
   },
   "keywords": [

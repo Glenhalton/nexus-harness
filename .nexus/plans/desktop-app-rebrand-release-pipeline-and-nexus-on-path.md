@@ -38,7 +38,7 @@ and make install add `nexus` + `nexus-code` to the terminal with no extra instal
   installer). Rejected a system-wide symlink because it needs an admin password and leaves a
   messier uninstall.
 - Shims run the **app's bundled Node runtime**, so users never need Node installed.
-- Release host: GitHub Releases on `GDA-Africa/nexus-harness`. Rejected own storage/CDN as
+- Release host: GitHub Releases on `Glenhalton/nexus-harness`. Rejected own storage/CDN as
   extra setup. The DeepSeek COS upload path (`scripts/*cos*`, `upload-*`) gets replaced.
 - Signing: wired to read credentials from env/CI secrets (names in plan
   `code-signing-and-notarization-credentials`). Unsigned builds must still succeed when the
@@ -54,7 +54,7 @@ and make install add `nexus` + `nexus-code` to the terminal with no extra instal
       Nexus Harness / NEXUS, not DeepSeek/dsh (internal `@deepseek-ai/*` package names may stay).
 - [ ] `package:desktop:mac:arm64:dir` and `package:desktop:win:x64:unsigned` build locally without
       COS/DeepSeek credentials.
-- [ ] Auto-update + release publishing target GitHub Releases on `GDA-Africa/nexus-harness`.
+- [ ] Auto-update + release publishing target GitHub Releases on `Glenhalton/nexus-harness`.
 - [ ] After install + first launch, a new terminal can run `nexus --version` and `nexus-code --help`
       with no system Node on PATH.
 - [ ] Uninstall (Windows) / an in-app "Remove terminal commands" action removes the shims and the
@@ -76,7 +76,7 @@ and make install add `nexus` + `nexus-code` to the terminal with no extra instal
 ## Notes
 - `apps/desktop` already has a large custom update system (`installed-update-*`, mandatory-update policy) built around DeepSeek COS. Prefer the smallest change that points it at GitHub Releases; record the choice in knowledge.md.
 - Coordinate with the onboarding plan: it will call the `terminal-commands` install action from the welcome flow.
-- 2026-10-05T08:34:30.803Z — Decisions (branch worktree-agent-a7d9e16df62ca2251): updates keep the generic provider + nightly channel, pointed at github.com/GDA-Africa/nexus-harness/releases/latest/download/ (DSH_DESKTOP_AUTO_UPDATE_ENV=github, now default; COS kept as opt-in). Signing mode auto-selects: no settings -> unsigned (macOS ad-hoc + manual-update link to Releases), Azure Trusted Signing via azureSignOptions, inherited Developer ID / SafeNet paths. Shims run the app's Electron with ELECTRON_RUN_AS_NODE=1 against app.asar/dsh (nexus = bundled @nexus-framework/cli, nexus-code = @deepseek-ai/dsh lib/bin.js). Translocated/DMG launches return blockedReason 'translocated'. App id africa.gda.nexus-harness (in env templates + CI). dsh base version now read from apps/cli (root is @nexus-framework/harness 1.0.0); dsh release family skips @nexus-framework/* packages. CI builds mac arm64 only (one nightly-mac.yml per release).
+- 2026-10-05T08:34:30.803Z — Decisions (branch worktree-agent-a7d9e16df62ca2251): updates keep the generic provider + nightly channel, pointed at github.com/Glenhalton/nexus-harness/releases/latest/download/ (DSH_DESKTOP_AUTO_UPDATE_ENV=github, now default; COS kept as opt-in). Signing mode auto-selects: no settings -> unsigned (macOS ad-hoc + manual-update link to Releases), Azure Trusted Signing via azureSignOptions, inherited Developer ID / SafeNet paths. Shims run the app's Electron with ELECTRON_RUN_AS_NODE=1 against app.asar/dsh (nexus = bundled @nexus-framework/cli, nexus-code = @deepseek-ai/dsh lib/bin.js). Translocated/DMG launches return blockedReason 'translocated'. App id africa.gda.nexus-harness (in env templates + CI). dsh base version now read from apps/cli (root is @nexus-framework/harness 1.0.0); dsh release family skips @nexus-framework/* packages. CI builds mac arm64 only (one nightly-mac.yml per release).
 - 2026-10-05T08:38:42.312Z — Validation: desktop + scripts/release vitest 1200+ pass (load-induced 5s timeouts in installed-update-* pass in isolation; notarization-proxy needs `pnpm run build:native-system`); tsc -b tsconfig.host.json clean after fixing pre-existing tool-nexus-brain casts; oxlint clean on apps/desktop and scripts/release. Local packaging NOT verified: host is Intel (mac-arm64 refused by design), and mac-x64:dir stops in build:official on pre-existing client type errors in ui-chat error-formatter.ts and ui-nexus-brain-indicator index.ts (master, outside this plan). Acceptance items needing a real build (nexus --version from a packaged app, NSIS uninstall, CI run) remain unverified. Hand to nexus-test-writer.
 
 ## Evidence

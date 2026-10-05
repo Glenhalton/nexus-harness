@@ -1,7 +1,7 @@
 # Build Nexus Harness desktop installers on a `desktop-v<version>` tag and attach them to a GitHub Release.
 #
 # The packaged apps read their update feed from
-# https://github.com/GDA-Africa/nexus-harness/releases/latest/download/ (nightly.yml / nightly-mac.yml),
+# https://github.com/Glenhalton/nexus-harness/releases/latest/download/ (nightly.yml / nightly-mac.yml),
 # so the release must be published (not a draft) and marked latest for installed apps to see it.
 #
 # Signing is optional. Each job writes the platform's Git-ignored dotenv file from repository secrets

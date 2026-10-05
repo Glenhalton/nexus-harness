@@ -6,7 +6,7 @@
 
 本分支以 **Nexus Harness** 发布桌面端（`productName`、安装程序文案，以及由 `scripts/render-brand-assets.mjs` 根据 `ui-brand-nexus` 标志渲染的图标）。内部 `@deepseek-ai/*` 包名、`dsh-app://` 协议和 `$DSH_HOME` 目录结构保持不变。下文提到 DeepSeek Harness、COS 或 SafeNet 令牌的章节描述的是继承下来的发布路径，显式选择时仍然可用。
 
-**发布与更新。** `DSH_DESKTOP_AUTO_UPDATE_ENV` 默认为 `github`：打包后的应用继续使用 electron-updater 的 generic 提供方和固定的 Nightly 渠道，指向 `https://github.com/GDA-Africa/nexus-harness/releases/latest/download/`，GitHub 会将其重定向到最新的已发布、非预发布版本。该部署不嵌入强制更新策略服务。`.github/workflows/desktop-release.yml` 在 `desktop-v<version>` 标签上构建 macOS arm64 和 Windows x64（标签必须与 `apps/desktop/package.json` 的版本一致），并将安装包、ZIP、blockmap 和 `nightly*.yml` 上传到该版本。`upload:*` 拒绝 `github` 部署。dsh 基础版本取自 `apps/cli/package.json`，因为工作区根目录现在承载 npm harness 的身份。
+**发布与更新。** `DSH_DESKTOP_AUTO_UPDATE_ENV` 默认为 `github`：打包后的应用继续使用 electron-updater 的 generic 提供方和固定的 Nightly 渠道，指向 `https://github.com/Glenhalton/nexus-harness/releases/latest/download/`，GitHub 会将其重定向到最新的已发布、非预发布版本。该部署不嵌入强制更新策略服务。`.github/workflows/desktop-release.yml` 在 `desktop-v<version>` 标签上构建 macOS arm64 和 Windows x64（标签必须与 `apps/desktop/package.json` 的版本一致），并将安装包、ZIP、blockmap 和 `nightly*.yml` 上传到该版本。`upload:*` 拒绝 `github` 部署。dsh 基础版本取自 `apps/cli/package.json`，因为工作区根目录现在承载 npm harness 的身份。
 
 **签名。** 每个目标的 dotenv 文件决定签名模式（`scripts/desktop-signing-mode.mjs`）：
 

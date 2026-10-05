@@ -138,7 +138,7 @@ describe('desktop macOS release signature', () => {
       dmg: { sign: false },
       extraMetadata: { nexusManualUpdates: true },
       publish: [{ provider: 'generic', channel: 'nightly',
-        url: 'https://github.com/GDA-Africa/nexus-harness/releases/latest/download/' }],
+        url: 'https://github.com/Glenhalton/nexus-harness/releases/latest/download/' }],
     })
     expect(config.extraMetadata.dshMandatoryUpdatePolicy).toBeUndefined()
     expect(portablePath(config.directories.output)).toContain('/targets/mac-arm64/unsigned-artifacts')
@@ -150,7 +150,7 @@ describe('desktop macOS release signature', () => {
     const base = { DSH_DESKTOP_APP_ID: RELEASE_ENVIRONMENT.DSH_DESKTOP_APP_ID, DSH_DESKTOP_TARGET_PLATFORM: 'win32' }
     const unsigned = createElectronBuilderConfig({ ...base, DSH_DESKTOP_UNSIGNED: '1' }, 'win32', 'x64')
     expect(unsigned.publish).toEqual([{ provider: 'generic', channel: 'nightly',
-      url: 'https://github.com/GDA-Africa/nexus-harness/releases/latest/download/' }])
+      url: 'https://github.com/Glenhalton/nexus-harness/releases/latest/download/' }])
     expect(unsigned.extraMetadata.nexusManualUpdates).toBeUndefined()
     expect(unsigned.extraResources.map((entry: { to: string }) => entry.to)).toContain('terminal-commands.ps1')
     const azure = createElectronBuilderConfig({ ...base, DSH_DESKTOP_UNSIGNED: '0',

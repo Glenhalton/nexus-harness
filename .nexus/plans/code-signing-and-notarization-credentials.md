@@ -30,7 +30,7 @@ it runs in parallel with the code work. **Owner: you (human). The agents can't d
 - [ ] **Apple:** create an App Store Connect API key (Users and Access → Integrations) for notarization; download the `.p8`
 - [ ] **Windows:** pick a signing route. Recommended: **Azure Trusted Signing** (about $10/mo, no hardware token, gets SmartScreen reputation). Alternative: an OV/EV certificate from a CA
 - [ ] **Windows (Azure route):** create the Trusted Signing account + certificate profile, complete identity validation, and create an app registration with the signer role
-- [ ] Add GitHub Actions secrets on `GDA-Africa/nexus-harness`:
+- [ ] Add GitHub Actions secrets on `Glenhalton/nexus-harness`:
       `MAC_CSC_LINK` (base64 of .p12), `MAC_CSC_KEY_PASSWORD`,
       `APPLE_API_KEY` (base64 of .p8), `APPLE_API_KEY_ID`, `APPLE_API_ISSUER`, `APPLE_TEAM_ID`,
       `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`,

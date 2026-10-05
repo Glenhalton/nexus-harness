@@ -327,7 +327,7 @@ export function buildHarnessManifest(input: HarnessManifestInput): Record<string
     ],
     repository: {
       type: 'git',
-      url: 'git+https://github.com/GDA-Africa/nexus-harness.git',
+      url: 'git+https://github.com/Glenhalton/nexus-harness.git',
       directory: 'apps/nexus-harness',
     },
     keywords: [
@@ -442,7 +442,9 @@ function run(command: string, args: readonly string[]): Promise<string> {
 
 function pnpmCommand(): { command: string; prefix: string[] } {
   const execpath = process.env.npm_execpath
-  if (execpath !== undefined && /\.[cm]?js$/iu.test(execpath)) return { command: process.execPath, prefix: [execpath] }
+  if (execpath !== undefined && /pnpm/iu.test(execpath) && /\.[cm]?js$/iu.test(execpath)) {
+    return { command: process.execPath, prefix: [execpath] }
+  }
   return { command: process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm', prefix: [] }
 }
 

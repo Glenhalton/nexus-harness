@@ -41,9 +41,9 @@ describe('desktop auto-update environment', () => {
       environment: 'github',
       target,
       origin: 'https://github.com',
-      publicUrl: 'https://github.com/GDA-Africa/nexus-harness/releases/latest/download/',
-      keyPrefix: 'GDA-Africa/nexus-harness/releases/latest/download',
-      binaryKeyPrefix: 'GDA-Africa/nexus-harness/releases/latest/download',
+      publicUrl: 'https://github.com/Glenhalton/nexus-harness/releases/latest/download/',
+      keyPrefix: 'Glenhalton/nexus-harness/releases/latest/download',
+      binaryKeyPrefix: 'Glenhalton/nexus-harness/releases/latest/download',
     }
     expect(resolveDesktopAutoUpdateConfig({}, platform, arch)).toEqual(expected)
     expect(resolveDesktopAutoUpdateConfig({ DSH_DESKTOP_AUTO_UPDATE_ENV: 'github', DOWNLOAD_TEST_ORIGIN: 'ignored' }, platform, arch)).toEqual(expected)

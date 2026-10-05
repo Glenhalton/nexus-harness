@@ -1,5 +1,5 @@
 /** Repository whose GitHub Releases host installers and update feeds. */
-export const DESKTOP_GITHUB_REPOSITORY: 'GDA-Africa/nexus-harness'
+export const DESKTOP_GITHUB_REPOSITORY: 'Glenhalton/nexus-harness'
 
 /** Environment variable that selects the Desktop update deployment. */
 export const DESKTOP_AUTO_UPDATE_ENV: 'DSH_DESKTOP_AUTO_UPDATE_ENV'

@@ -2,7 +2,7 @@
  * Resolve the Desktop auto-update channel and its destination.
  *
  * `github` (the default) serves the fixed Nightly feed from the latest GitHub Release of
- * GDA-Africa/nexus-harness through GitHub's `releases/latest/download/` redirect, so the packaged
+ * Glenhalton/nexus-harness through GitHub's `releases/latest/download/` redirect, so the packaged
  * generic provider, feed filenames and verification stay unchanged. `test` and `production` keep the
  * inherited Tencent COS deployments for operators who still run them.
  */
@@ -13,7 +13,7 @@ import { valid } from 'semver'
 export const DESKTOP_AUTO_UPDATE_ENV = 'DSH_DESKTOP_AUTO_UPDATE_ENV'
 
 /** Repository whose GitHub Releases host Nexus Harness installers and update feeds. */
-export const DESKTOP_GITHUB_REPOSITORY = 'GDA-Africa/nexus-harness'
+export const DESKTOP_GITHUB_REPOSITORY = 'Glenhalton/nexus-harness'
 
 const UPDATE_ENVIRONMENTS = {
   github: {
