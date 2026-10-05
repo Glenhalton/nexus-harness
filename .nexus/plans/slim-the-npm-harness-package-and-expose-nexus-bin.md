@@ -67,7 +67,7 @@ Measured on macOS x64, Node 24.13.0, npm 11.6.2. Installs used a cold, per-run n
 | Tarball (packed) | 27.6 MB | 10.3 MB |
 | Unpacked package | 105.6 MB | 33.8 MB |
 | Files in tarball | 14,255 | 2,473 |
-| `dependencies` | 66 (incl. vitest, @vitest/spy, typescript, tsx, @testing-library/*, electron-updater) | 44 required + 4 optional platform binaries |
+| `dependencies` | 71 (incl. vitest, @vitest/spy, typescript, tsx, @testing-library/*, electron-updater) | 44 required + 4 optional platform binaries |
 | Global install time (cold cache) | 214 s | 74 s |
 | Installed prefix size | 1.2 GB | 603 MB |
 | `nexus-harness --help`, first run | 1658 ms, **exit 1** (ERR_MODULE_NOT_FOUND) | 981 ms, exit 0 |
