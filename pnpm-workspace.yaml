@@ -7,6 +7,8 @@ packages:
   - native/system/packages/*
   # Product assemblies over the package tier; apps/cli owns the `dsh` bin.
   - apps/*
+  # Generated npm distribution (scripts/package-npm-harness.ts); installed by npm, never by pnpm.
+  - '!apps/nexus-harness'
   # Private package owning repository-level benchmark dependencies.
   - benchmarks
   - website
