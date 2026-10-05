@@ -7,10 +7,12 @@ const electron = vi.hoisted(() => ({
   create: vi.fn<(options: unknown) => ReturnType<typeof createWindow>>(),
   root: '/desktop-app',
   handlers: new Map<string, (event: unknown, value?: unknown) => Promise<unknown>>(),
+  showOpenDialog: vi.fn<(window: unknown, options: unknown) => Promise<{ canceled: boolean; filePaths: string[] }>>(),
 }))
 vi.mock('electron', () => ({
   app: { getAppPath: () => electron.root },
   BrowserWindow: vi.fn(function (options: unknown) { return electron.create(options) }),
+  dialog: { showOpenDialog: (window: unknown, options: unknown) => electron.showOpenDialog(window, options) },
   ipcMain: {
     handle: (name: string, handler: (event: unknown, value?: unknown) => Promise<unknown>) => {
       if (electron.handlers.has(name)) throw new Error(`duplicate IPC handler: ${name}`)
@@ -45,6 +47,9 @@ const operations = {
   copySignInLink: async () => undefined,
   saveApiKey: () => Promise.resolve({ ok: true as const }),
   skip: () => Promise.resolve(),
+  folderState: () => Promise.resolve('needs-setup' as const),
+  setUpFolder: () => Promise.resolve({ ok: true }),
+  useFolder: () => Promise.resolve({ ok: true }),
 }
 
 describe('desktop welcome window', () => {
@@ -130,6 +135,46 @@ describe('desktop welcome window', () => {
     await expect(copy(own, 42)).rejects.toThrow('invalid attempt')
     await copy(own, 'attempt')
     expect(copySignInLink).toHaveBeenCalledExactlyOnceWith('attempt')
+    window.once.mock.calls[0]![1]()
+    expect(electron.handlers.size).toBe(0)
+  })
+
+  it('runs folder actions only on the folder its own dialog returned', async () => {
+    const window = createWindow()
+    electron.create.mockReturnValue(window)
+    const folderState = vi.fn(operations.folderState)
+    const setUpFolder = vi.fn(operations.setUpFolder)
+    const useFolder = vi.fn(operations.useFolder)
+    await openWelcomeWindow(resolveDesktopLocale('en'), { ...operations, folderState, setUpFolder, useFolder })
+    const own = { sender: window.webContents, senderFrame: window.webContents.mainFrame }
+    const choose = electron.handlers.get(WELCOME_IPC.chooseFolder)!
+    const setUp = electron.handlers.get(WELCOME_IPC.setUpFolder)!
+    const use = electron.handlers.get(WELCOME_IPC.useFolder)!
+    await expect(choose({ sender: {}, senderFrame: {} })).rejects.toThrow('unowned frame')
+    await expect(setUp({ ...own, senderFrame: {} })).rejects.toThrow('unowned frame')
+    await expect(use({ sender: {}, senderFrame: {} })).rejects.toThrow('unowned frame')
+    expect(await setUp(own, '/injected')).toEqual({ ok: false })
+    expect(await use(own, '/injected')).toEqual({ ok: false })
+    electron.showOpenDialog.mockResolvedValueOnce({ canceled: true, filePaths: [] })
+    expect(await choose(own)).toBeNull()
+    const dialogResult = Promise.withResolvers<{ canceled: boolean; filePaths: string[] }>()
+    electron.showOpenDialog.mockReturnValueOnce(dialogResult.promise)
+    const first = choose(own)
+    const second = choose(own)
+    dialogResult.resolve({ canceled: false, filePaths: ['/Users/me/shop'] })
+    expect(await first).toEqual({ name: 'shop', path: '/Users/me/shop', state: 'needs-setup' })
+    expect(await second).toEqual({ name: 'shop', path: '/Users/me/shop', state: 'needs-setup' })
+    expect(electron.showOpenDialog).toHaveBeenLastCalledWith(window, { properties: ['openDirectory', 'createDirectory'] })
+    expect(folderState).toHaveBeenCalledExactlyOnceWith('/Users/me/shop')
+    expect(await setUp(own, '/injected')).toEqual({ ok: true })
+    expect(await use(own, '/injected')).toEqual({ ok: true })
+    expect(setUpFolder).toHaveBeenCalledExactlyOnceWith('/Users/me/shop')
+    expect(useFolder).toHaveBeenCalledExactlyOnceWith('/Users/me/shop')
+    electron.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: ['/'] })
+    expect(await choose(own)).toMatchObject({ name: '/', path: '/' })
+    window.isDestroyed.mockReturnValue(true)
+    electron.showOpenDialog.mockResolvedValueOnce({ canceled: false, filePaths: ['/Users/me/other'] })
+    expect(await choose(own)).toBeNull()
     window.once.mock.calls[0]![1]()
     expect(electron.handlers.size).toBe(0)
   })
