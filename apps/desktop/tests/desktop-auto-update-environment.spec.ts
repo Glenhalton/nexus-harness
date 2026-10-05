@@ -11,7 +11,7 @@ import {
 const RELEASE_ID = '0123456789abcdef0123456789abcdef'
 
 describe('desktop auto-update environment', () => {
-  it.each([undefined, 'test'])('requires a release ID for deployment %s', (deployment) => {
+  it.each(['test'])('requires a release ID for deployment %s', (deployment) => {
     const environment = { DSH_DESKTOP_AUTO_UPDATE_ENV: deployment, DOWNLOAD_TEST_ORIGIN: 'https://updates.example.com',
       DOWNLOAD_TEST_COS_BUCKET: 'test-bucket' }
     expect(() => resolveDesktopAutoUpdateConfig(environment, 'win32', 'x64')).toThrow(/DOWNLOAD_TEST_RELEASE_ID/u)
@@ -20,13 +20,13 @@ describe('desktop auto-update environment', () => {
 
   it.each(['', ' ', 'release-1', 'a'.repeat(31), 'a'.repeat(33), 'A'.repeat(32), 'g'.repeat(32),
     '../feeds', '01234567-89ab-cdef-0123-456789abcdef', `${RELEASE_ID}/bin`])('rejects invalid test release ID %j', (id) => {
-    const environment = { DOWNLOAD_TEST_ORIGIN: 'https://updates.example.com', DOWNLOAD_TEST_RELEASE_ID: id }
+    const environment = { DSH_DESKTOP_AUTO_UPDATE_ENV: 'test', DOWNLOAD_TEST_ORIGIN: 'https://updates.example.com', DOWNLOAD_TEST_RELEASE_ID: id }
     expect(() => resolveDesktopAutoUpdateConfig(environment, 'darwin', 'arm64')).toThrow(/DOWNLOAD_TEST_RELEASE_ID/u)
   })
 
   it.each([['darwin', 'arm64', 'mac-arm64'], ['darwin', 'x64', 'mac-x64'], ['win32', 'x64', 'win-x64']] as const)
   ('uses one test release directory for %s %s feeds and binaries', (platform, arch, target) => {
-    expect(resolveDesktopAutoUpdateConfig({ DOWNLOAD_TEST_ORIGIN: 'https://updates.example.com',
+    expect(resolveDesktopAutoUpdateConfig({ DSH_DESKTOP_AUTO_UPDATE_ENV: 'test', DOWNLOAD_TEST_ORIGIN: 'https://updates.example.com',
       DOWNLOAD_TEST_RELEASE_ID: RELEASE_ID }, platform, arch)).toMatchObject({
       publicUrl: `https://updates.example.com/dsh-desk/${RELEASE_ID}/feeds/${target}/`,
       keyPrefix: `dsh-desk/${RELEASE_ID}/feeds/${target}`,
@@ -34,9 +34,26 @@ describe('desktop auto-update environment', () => {
     })
   })
 
-  it('defaults packages and uploads to the test deployment', () => {
-    expect(resolveDesktopAutoUpdateEnvironment({})).toBe('test')
+  it.each([['darwin', 'arm64', 'mac-arm64'], ['win32', 'x64', 'win-x64']] as const)
+  ('defaults %s %s to the latest GitHub Release feed and refuses COS uploads', (platform, arch, target) => {
+    expect(resolveDesktopAutoUpdateEnvironment({})).toBe('github')
+    const expected = {
+      environment: 'github',
+      target,
+      origin: 'https://github.com',
+      publicUrl: 'https://github.com/GDA-Africa/nexus-harness/releases/latest/download/',
+      keyPrefix: 'GDA-Africa/nexus-harness/releases/latest/download',
+      binaryKeyPrefix: 'GDA-Africa/nexus-harness/releases/latest/download',
+    }
+    expect(resolveDesktopAutoUpdateConfig({}, platform, arch)).toEqual(expected)
+    expect(resolveDesktopAutoUpdateConfig({ DSH_DESKTOP_AUTO_UPDATE_ENV: 'github', DOWNLOAD_TEST_ORIGIN: 'ignored' }, platform, arch)).toEqual(expected)
+    expect(() => resolveDesktopUploadConfig({}, platform, arch)).toThrow(/desktop-release workflow/u)
+  })
+
+  it('resolves the test deployment when selected explicitly', () => {
+    expect(resolveDesktopAutoUpdateEnvironment({ DSH_DESKTOP_AUTO_UPDATE_ENV: 'test' })).toBe('test')
     expect(resolveDesktopAutoUpdateConfig({
+      DSH_DESKTOP_AUTO_UPDATE_ENV: 'test',
       DOWNLOAD_TEST_ORIGIN: 'https://desktop-updates.example.com/',
       DOWNLOAD_TEST_RELEASE_ID: RELEASE_ID,
     }, 'darwin', 'arm64')).toEqual({
@@ -48,6 +65,7 @@ describe('desktop auto-update environment', () => {
       binaryKeyPrefix: `dsh-desk/${RELEASE_ID}/bin/mac-arm64`,
     })
     expect(resolveDesktopUploadConfig({
+      DSH_DESKTOP_AUTO_UPDATE_ENV: 'test',
       DOWNLOAD_TEST_ORIGIN: 'https://desktop-updates.example.com/',
       DOWNLOAD_TEST_RELEASE_ID: RELEASE_ID,
       DOWNLOAD_TEST_COS_BUCKET: 'test-download-bucket',
@@ -79,13 +97,15 @@ describe('desktop auto-update environment', () => {
   })
 
   it('requires the selected deployment origin for packages and bucket only for uploads', () => {
-    expect(() => resolveDesktopAutoUpdateConfig({}, 'darwin', 'arm64'))
+    expect(() => resolveDesktopAutoUpdateConfig({ DSH_DESKTOP_AUTO_UPDATE_ENV: 'test' }, 'darwin', 'arm64'))
       .toThrow(/DOWNLOAD_TEST_ORIGIN/u)
     expect(resolveDesktopAutoUpdateConfig({
+      DSH_DESKTOP_AUTO_UPDATE_ENV: 'test',
       DOWNLOAD_TEST_ORIGIN: 'https://desktop-updates.example.com',
       DOWNLOAD_TEST_RELEASE_ID: RELEASE_ID,
     }, 'darwin', 'arm64').publicUrl).toContain('/mac-arm64/')
     expect(() => resolveDesktopUploadConfig({
+      DSH_DESKTOP_AUTO_UPDATE_ENV: 'test',
       DOWNLOAD_TEST_ORIGIN: 'https://desktop-updates.example.com',
       DOWNLOAD_TEST_RELEASE_ID: RELEASE_ID,
     }, 'darwin', 'arm64')).toThrow(/DOWNLOAD_TEST_COS_BUCKET/u)
@@ -96,9 +116,11 @@ describe('desktop auto-update environment', () => {
 
   it('rejects a test download URL that is not an HTTPS origin', () => {
     expect(() => resolveDesktopAutoUpdateConfig({
+      DSH_DESKTOP_AUTO_UPDATE_ENV: 'test',
       DOWNLOAD_TEST_ORIGIN: 'https://desktop-updates.example.com/releases',
     }, 'darwin', 'arm64')).toThrow(/HTTPS origin without a path/u)
     expect(() => resolveDesktopAutoUpdateConfig({
+      DSH_DESKTOP_AUTO_UPDATE_ENV: 'test',
       DOWNLOAD_TEST_ORIGIN: 'http://desktop-updates.example.com',
     }, 'darwin', 'arm64')).toThrow(/HTTPS origin/u)
   })

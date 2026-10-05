@@ -1,0 +1,215 @@
+# Build Nexus Harness desktop installers on a `desktop-v<version>` tag and attach them to a GitHub Release.
+#
+# The packaged apps read their update feed from
+# https://github.com/GDA-Africa/nexus-harness/releases/latest/download/ (nightly.yml / nightly-mac.yml),
+# so the release must be published (not a draft) and marked latest for installed apps to see it.
+#
+# Signing is optional. Each job writes the platform's Git-ignored dotenv file from repository secrets
+# (names from .nexus/plans/code-signing-and-notarization-credentials.md); when the secrets are absent
+# the packaging script builds unsigned (ad-hoc signed on macOS) artifacts instead of failing.
+name: Desktop release
+
+on:
+  push:
+    tags: ['desktop-v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing desktop-v<version> tag to build and release
+        required: true
+      prerelease:
+        description: Mark the release as a prerelease (installed apps will not update to it)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_TAG: ${{ github.event.inputs.tag || github.ref_name }}
+
+jobs:
+  version:
+    name: Check tag against the desktop version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - id: version
+        run: |
+          version=$(node -p "require('./apps/desktop/package.json').version")
+          if [ "$RELEASE_TAG" != "desktop-v$version" ]; then
+            echo "::error::Tag $RELEASE_TAG does not match apps/desktop version $version (expected desktop-v$version)"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  mac:
+    name: macOS arm64
+    needs: version
+    runs-on: macos-14
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Write .env.macos
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          MAC_SIGNING_IDENTITY: ${{ secrets.MAC_SIGNING_IDENTITY }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          umask 077
+          file=apps/desktop/.env.macos
+          {
+            echo 'DSH_DESKTOP_APP_ID=africa.gda.nexus-harness'
+            echo 'DSH_DESKTOP_AUTO_UPDATE_ENV=github'
+          } > "$file"
+          if [ -n "$MAC_CSC_LINK" ] && [ -n "$APPLE_API_KEY" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            secrets_dir="$RUNNER_TEMP/desktop-signing"
+            mkdir -p "$secrets_dir"
+            printf '%s' "$MAC_CSC_LINK" | base64 --decode > "$secrets_dir/developer-id.p12"
+            printf '%s' "$APPLE_API_KEY" | base64 --decode > "$secrets_dir/AuthKey.p8"
+            identity="$MAC_SIGNING_IDENTITY"
+            if [ -z "$identity" ]; then
+              # electron-builder wants the certificate name without the "Developer ID Application:" prefix.
+              identity=$(openssl pkcs12 -in "$secrets_dir/developer-id.p12" -nokeys -clcerts -passin env:MAC_CSC_KEY_PASSWORD \
+                | openssl x509 -noout -subject \
+                | sed -n 's/.*CN *= *Developer ID Application: \([^/,]*\).*/\1/p')
+            fi
+            {
+              echo "DSH_DESKTOP_MACOS_SIGNING_IDENTITY=\"$identity\""
+              echo "DSH_DESKTOP_MACOS_TEAM_ID=$APPLE_TEAM_ID"
+              echo "CSC_LINK=$secrets_dir/developer-id.p12"
+              echo "CSC_KEY_PASSWORD='$MAC_CSC_KEY_PASSWORD'"
+              echo "APPLE_API_KEY=$secrets_dir/AuthKey.p8"
+              echo "APPLE_API_KEY_ID=$APPLE_API_KEY_ID"
+              echo "APPLE_API_ISSUER=$APPLE_API_ISSUER"
+            } >> "$file"
+            echo "macOS: Developer ID signing and notarization enabled"
+          else
+            echo "::warning::macOS signing secrets are absent; building an ad-hoc signed, unnotarized app"
+          fi
+
+      - name: Package
+        run: pnpm run package:desktop:mac:arm64
+
+      - name: Remove signing material
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/desktop-signing" apps/desktop/.env.macos
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-mac-arm64
+          if-no-files-found: error
+          path: |
+            apps/desktop/.desktop-build/targets/mac-arm64/*artifacts/*.dmg
+            apps/desktop/.desktop-build/targets/mac-arm64/*artifacts/*.zip
+            apps/desktop/.desktop-build/targets/mac-arm64/*artifacts/*.blockmap
+            apps/desktop/.desktop-build/targets/mac-arm64/*artifacts/nightly-mac.yml
+
+  windows:
+    name: Windows x64
+    needs: version
+    runs-on: windows-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Write .env.windows
+        shell: pwsh
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TRUSTED_SIGNING_ENDPOINT: ${{ secrets.AZURE_TRUSTED_SIGNING_ENDPOINT }}
+          AZURE_TRUSTED_SIGNING_ACCOUNT: ${{ secrets.AZURE_TRUSTED_SIGNING_ACCOUNT }}
+          AZURE_TRUSTED_SIGNING_PROFILE: ${{ secrets.AZURE_TRUSTED_SIGNING_PROFILE }}
+          AZURE_TRUSTED_SIGNING_PUBLISHER_NAME: ${{ secrets.AZURE_TRUSTED_SIGNING_PUBLISHER_NAME }}
+        run: |
+          $lines = @('DSH_DESKTOP_APP_ID=africa.gda.nexus-harness', 'DSH_DESKTOP_AUTO_UPDATE_ENV=github')
+          $azure = 'AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'AZURE_TRUSTED_SIGNING_ENDPOINT', 'AZURE_TRUSTED_SIGNING_ACCOUNT', 'AZURE_TRUSTED_SIGNING_PROFILE'
+          if (-not ($azure | Where-Object { -not [Environment]::GetEnvironmentVariable($_) })) {
+            foreach ($name in $azure + 'AZURE_TRUSTED_SIGNING_PUBLISHER_NAME') {
+              $value = [Environment]::GetEnvironmentVariable($name)
+              if ($value) { $lines += "$name='$value'" }
+            }
+            Write-Host 'Windows: Azure Trusted Signing enabled'
+          } else {
+            Write-Host '::warning::Azure Trusted Signing secrets are absent; building an unsigned installer'
+          }
+          [IO.File]::WriteAllLines("$PWD/apps/desktop/.env.windows", $lines)
+
+      - name: Package
+        run: pnpm run package:desktop:win:x64
+
+      - name: Remove signing material
+        if: always()
+        shell: pwsh
+        run: Remove-Item -Force -ErrorAction SilentlyContinue apps/desktop/.env.windows
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-win-x64
+          if-no-files-found: error
+          path: |
+            apps/desktop/.desktop-build/targets/win-x64/*artifacts/*.exe
+            apps/desktop/.desktop-build/targets/win-x64/*artifacts/*.blockmap
+            apps/desktop/.desktop-build/targets/win-x64/*artifacts/nightly.yml
+
+  release:
+    name: Publish GitHub Release
+    needs: [version, mac, windows]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.version }}
+          PRERELEASE: ${{ github.event.inputs.prerelease || 'false' }}
+        run: |
+          set -euo pipefail
+          ls -la dist
+          if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            flags=(--title "Nexus Harness $VERSION" --generate-notes --verify-tag)
+            if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); else flags+=(--latest); fi
+            gh release create "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" "${flags[@]}"
+          fi
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --clobber dist/*

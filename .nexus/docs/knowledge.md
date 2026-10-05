@@ -40,3 +40,13 @@ Optional: Brief supporting detail (1-2 sentences max).
 
 ### [convention] Project scaffolded with NEXUS CLI
 **2026-08-22** — This project was generated with NEXUS CLI. Follow the doc system in `.nexus/docs/` and always read `index.md` (the brain) before each task.
+
+### [architecture] Desktop Updates Use GitHub latest/download With The Existing Generic Provider
+**2026-10-05** — Desktop releases point electron-updater's unchanged generic provider + fixed `nightly` channel at `https://github.com/GDA-Africa/nexus-harness/releases/latest/download/` (`DSH_DESKTOP_AUTO_UPDATE_ENV=github`, now the default) instead of adopting the `github` provider or rewriting `installed-update-*`.
+GitHub redirects that path to the newest published non-prerelease release, so feed names, macOS app-update.yml verification and the coordinator stay as they were; the COS `test`/`production` deployments remain selectable, and the `desktop-release.yml` workflow (not `upload:*`) publishes. Prereleases are invisible to installed apps, and only one `nightly-mac.yml` fits per release (CI builds mac arm64 only).
+
+### [gotcha] Unsigned macOS Builds Must Be Ad-Hoc Signed And Cannot Self-Update
+**2026-10-05** — With no signing settings the desktop package path ad-hoc signs (`codesign --sign -` on runtime Mach-O files before the runtime inventory, electron-builder `identity: '-'`, hardened runtime off); Apple Silicon refuses fully unsigned code. Squirrel.Mac rejects updates without a Developer ID signature, so ad-hoc builds set `nexusManualUpdates` and open the GitHub Releases page instead.
+
+### [gotcha] lefthook Pre-Commit Can Drop Unstaged Changes In A Worktree
+**2026-10-05** — When the staged lint auto-fixes a file that also has unstaged edits, lefthook fails to re-apply its stashed unstaged patch and the unstaged edits are lost. Stage everything you mean to keep (or commit it) before running `git commit`.

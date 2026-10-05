@@ -1,6 +1,25 @@
-# DeepSeek Harness Desktop
+# Nexus Harness Desktop
 
 English | [中文](README.zh.md)
+
+## Nexus Harness distribution
+
+This fork ships the desktop app as **Nexus Harness** (`productName`, installer strings, icons rendered from the `ui-brand-nexus` mark by `scripts/render-brand-assets.mjs`). Internal `@deepseek-ai/*` package names, the `dsh-app://` scheme and the `$DSH_HOME` layout are unchanged. Sections below that mention DeepSeek Harness, COS or the SafeNet token describe the inherited release path, which still works when selected explicitly.
+
+**Releases and updates.** `DSH_DESKTOP_AUTO_UPDATE_ENV` defaults to `github`: packaged apps keep electron-updater's generic provider and fixed Nightly channel, pointed at `https://github.com/GDA-Africa/nexus-harness/releases/latest/download/`, which GitHub redirects to the newest published, non-prerelease release. No mandatory-update policy service is embedded for this deployment. `.github/workflows/desktop-release.yml` builds macOS arm64 and Windows x64 on a `desktop-v<version>` tag (the tag must equal `apps/desktop/package.json`'s version) and uploads the installers, ZIP, blockmaps and `nightly*.yml` to that release. `upload:*` refuses the `github` deployment. The dsh base version comes from `apps/cli/package.json`, because the workspace root now carries the npm harness identity.
+
+**Signing.** Each target's dotenv file selects the mode (`scripts/desktop-signing-mode.mjs`):
+
+| Settings present | Mode | Result |
+|---|---|---|
+| none (all empty) or `--unsigned` | unsigned | macOS: ad-hoc signed, not notarized, `-unsigned` artifact names, hardened runtime off; Windows: no Authenticode signature |
+| macOS Developer ID / notarization settings | signed | inherited Developer ID + notarization path |
+| all six `AZURE_*` settings in `.env.windows` | azure | electron-builder `azureSignOptions`; publisher defaults to `GDA Africa` (`AZURE_TRUSTED_SIGNING_PUBLISHER_NAME`) |
+| `DSH_DESKTOP_WINDOWS_*` token settings | signed | inherited SafeNet token path |
+
+A partial configuration still fails validation, so a typo cannot silently drop signatures. Unsigned Windows builds keep the GitHub feed and update normally. Squirrel.Mac only installs updates signed by the same Developer ID, so ad-hoc macOS builds carry `nexusManualUpdates`: an available update opens the GitHub Releases page instead of downloading.
+
+**Terminal commands.** The packaged runtime bundles `@nexus-framework/cli` (pinned to the version the workspace resolves) next to `@deepseek-ai/dsh`. [`src/terminal-commands.ts`](src/terminal-commands.ts) writes `nexus` and `nexus-code` shims to `~/.nexus/bin` that run the app's own Electron executable with `ELECTRON_RUN_AS_NODE=1`, so no system Node.js is needed, and adds that directory to `PATH` with one marked block in `~/.zprofile` and `~/.bashrc` (Windows: the per-user `Path` under HKCU). Packaged launches refresh the shims unless the user removed them; the application menu offers **Add nexus to Terminal** / **Remove nexus from Terminal**, and the renderer can call `nexus:terminal-commands:status|install|remove`. On macOS, a copy running from App Translocation or a mounted disk image reports `blockedReason: 'translocated'` and writes nothing. The NSIS installer runs `installer/terminal-commands.ps1` on fresh installs and on uninstall; in-place updates leave the commands alone.
 
 The desktop application is an Electron shell around the complete dsh Web application. An Electron RunAsNode child starts the shared profile runner, and Electron immediately loads the packaged Web entry at `dsh-app://app/`. Its shared loading page waits for Host boot injections, then starts the client without navigating to another document. Electron forwards application HTTP requests to the authenticated Web Host, dropping connection-level response headers (`transfer-encoding`, `connection`, `keep-alive`) that describe the Node fetch rather than the resource, and marking plugin bundle responses `no-store` because their per-launch revisions would only accumulate in Chromium's disk cache; WebSocket streams connect to that Host with credentials attached only for the owned application window. Node IPC carries boot injections, readiness, and shutdown. Desktop defaults to port `19387`, separate from Web’s `3080`; a `webserver.config.port` patch can override it.
 
