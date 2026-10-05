@@ -10,6 +10,8 @@ import { DESKTOP_IPC, type DesktopUpdateState } from '../src/ipc.ts'
 import { MANDATORY_IPC } from '../src/mandatory-update-ipc.ts'
 import { DesktopHostFatalError, DesktopHostUncleanExitError } from '../src/host-process.ts'
 import { en } from '../src/locale.ts'
+import { TERMINAL_COMMANDS_IPC } from '../src/terminal-commands.ts'
+import { pathToFileURL } from 'node:url'
 import { DesktopUpdatePreparationError } from '../src/update-error.ts'
 import { writeCrashReport } from '../src/crash-report.ts'
 
@@ -829,6 +831,22 @@ describe('desktop main startup', () => {
         .toMatchFileSnapshot(`./expected/application-menu-${locale}.json`)
       expect(harness.app.name).toBe('@deepseek-ai/dsh-desktop')
     } finally { harness.app.name = originalName }
+  })
+
+  it('serves terminal-command IPC to the welcome window and Desktop documents but rejects foreign senders', async () => {
+    await import('../src/main.ts')
+    await harness.preparing.promise
+    const welcome = pathToFileURL(join(harness.app.getAppPath(), 'renderer', 'welcome.html')).href
+    for (const channel of [TERMINAL_COMMANDS_IPC.status, TERMINAL_COMMANDS_IPC.install, TERMINAL_COMMANDS_IPC.remove]) {
+      const handler = harness.handlers.get(channel)
+      if (handler === undefined) throw new Error(`missing handler ${channel}`)
+      for (const url of [welcome, `${welcome}?theme=dark`, 'dsh-app://app/index.html', 'dsh-app://shell/index.html']) {
+        await expect(Promise.resolve(handler({ senderFrame: { url } }))).resolves.toMatchObject({ commands: ['nexus', 'nexus-code'] })
+      }
+      for (const url of ['https://example.com/', 'file:///tmp/welcome.html', 'dsh-app://platform/index.html']) {
+        await expect(Promise.resolve().then(() => handler({ senderFrame: { url } }))).rejects.toThrow(/rejected IPC/u)
+      }
+    }
   })
 
   it('attaches Host socket credentials only to the owned application origin and window', async () => {
