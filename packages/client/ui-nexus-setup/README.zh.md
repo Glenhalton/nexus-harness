@@ -49,10 +49,9 @@ kind: "package-reference"
 
 无；本包既不组装也不发送模型请求。
 
------
+## 已知限制与延后工作
 
 <a id="known-limitations-and-deferred-work"></a>
-## 已知限制与延后工作
 
 - **每个页面对每个文件夹只读取一次状态。** 在应用外创建的 `.nexus/`（例如在终端运行 `nexus init`）会在重新加载后隐藏按钮。
 - **Brain 状态标签随下一轮更新。** [`ui-nexus-brain-indicator`](../ui-nexus-brain-indicator/) 的状态来自下一轮注入的上下文，而不是本设置。

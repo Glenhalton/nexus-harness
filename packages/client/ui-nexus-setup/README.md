@@ -49,10 +49,9 @@ None, as the prompt is browser chrome; nothing here reaches a model request.
 
 None; this package neither assembles nor sends a provider request.
 
------
+## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
-## Known Limitations and Deferred Work
 
 - **Status is read once per folder per page.** A `.nexus/` created outside the app (for example by `nexus init` in a terminal) hides the button after a reload.
 - **The brain chip follows the next turn.** [`ui-nexus-brain-indicator`](../ui-nexus-brain-indicator/) derives its state from the context injected on the next turn, not from this setup.

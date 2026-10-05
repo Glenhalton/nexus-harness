@@ -54,16 +54,15 @@ kind: "package-reference"
 <a id="model-experience"></a>
 ## 模型体验
 
-无直接影响：这些路由是用户操作。在此完成设置的文件夹之后会获得 [`nexus-brain-context`](../../experimental/nexus-brain-context/README.zh.md) 注入的 NEXUS 环境上下文。
+无，这些路由是用户操作；在此完成设置的文件夹之后会获得 [`nexus-brain-context`](../../experimental/nexus-brain-context/README.zh.md) 的环境上下文。
 
 #### KV Cache 影响
 
 无；本包既不组装也不发送模型请求。
 
------
+## 已知限制与延后工作
 
 <a id="known-limitations-and-deferred-work"></a>
-## 已知限制与延后工作
 
 - **设置时不进行访谈。** 生成的文档以模板状态开始；NEXUS 引导访谈之后由智能体进行。
 - **项目探测是 CLI 的子集。** monorepo 与非 Node 框架的探测保持生成器默认值。

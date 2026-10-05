@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write packages/host/nexus-setup/README.md
-README.md: c0153f0cd9a9f4ea60fa773e9613041a5451e1ab
-README.zh.md: 1aed9b9ff8f23435e754e066120a35e2d113faa8
+README.md: e7e54b81ad003c217c452825826fab210dce703c
+README.zh.md: c9ff91470d866c9fb0f4ad1af9553999d152c171

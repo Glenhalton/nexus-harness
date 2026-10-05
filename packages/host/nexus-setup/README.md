@@ -54,16 +54,15 @@ Init writes `.nexus/` and the AI pointer files the CLI's `nexus adopt` writes (`
 <a id="model-experience"></a>
 ## Model Experience
 
-None directly: the routes are user actions. A folder set up here later gains the ambient NEXUS context that [`nexus-brain-context`](../../experimental/nexus-brain-context/README.md) injects.
+None, as the routes are user actions; a folder set up here later gains the ambient context of [`nexus-brain-context`](../../experimental/nexus-brain-context/README.md).
 
 #### KV Cache effect
 
 None; this package neither assembles nor sends a provider request.
 
------
+## Known Limitations and Deferred Work
 
 <a id="known-limitations-and-deferred-work"></a>
-## Known Limitations and Deferred Work
 
 - **Setup asks no interview questions.** The generated docs start as templates; the NEXUS onboarding interview runs later with the agent.
 - **Project detection is a subset of the CLI's.** Monorepo and non-Node framework detection stay at the generator defaults.
