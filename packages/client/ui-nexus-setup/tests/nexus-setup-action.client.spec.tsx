@@ -35,17 +35,21 @@ function bench(cwd: string | undefined, phases: NexusSetupPhases, setUpResult = 
     return ok
   })
   const dismiss = vi.fn((path: string) => { controller.phases.set({ ...controller.phases.getSnapshot(), [path]: 'dismissed' }) })
+  const openDialog = vi.fn((sessionId: SessionId, path: string) => { controller.openDialog(sessionId, path) })
+  const closeDialog = vi.fn((sessionId: SessionId) => { controller.closeDialog(sessionId) })
   const props = (): NexusSetupActionProps => ({
     sessionId: SESSION,
     useSessions: <T,>(select: (snapshot: SessionListState) => T): T => select(state),
     useNexusSetupPhases: <T,>(select: (value: NexusSetupPhases) => T): T => select(controller.phases.getSnapshot()),
-    hooks: { nexusSetupPhases: controller.phases },
-    check, setUp, dismiss, t,
+    useNexusSetupDialog: <T,>(select: (value: SessionId | null) => T): T => select(controller.dialog.getSnapshot()),
+    hooks: { nexusSetupPhases: controller.phases, nexusSetupDialog: controller.dialog },
+    check, setUp, dismiss, openDialog, closeDialog, t,
   } as unknown as NexusSetupActionProps)
   const view = render(<NexusSetupAction {...props()} />)
   const rerender = (): void => { view.rerender(<NexusSetupAction {...props()} />) }
   controller.phases.subscribe(rerender)
-  return { view, check, setUp, dismiss, gate, settle: (ok = setUpResult) => { gate.resolve(ok) } }
+  controller.dialog.subscribe(rerender)
+  return { view, controller, check, setUp, dismiss, gate, settle: (ok = setUpResult) => { gate.resolve(ok) } }
 }
 
 describe('NexusSetupAction', () => {
@@ -99,5 +103,16 @@ describe('NexusSetupAction', () => {
     fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: en['dialog.later'] }))
     expect(dismiss).toHaveBeenCalledWith('/w')
     expect(screen.queryByRole('button', { name: en['action.label'] })).toBeNull()
+  })
+
+  it('opens when another surface asks for this Session, and only for this Session', () => {
+    const { controller } = bench('/w', { '/w': 'dismissed' })
+    expect(screen.queryByRole('button', { name: en['action.label'] })).toBeNull()
+    act(() => { controller.openDialog('other' as SessionId, '/w') })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    act(() => { controller.openDialog(SESSION, '/w') })
+    expect(screen.getByRole('dialog', { name: en['dialog.title'] })).toBeTruthy()
+    // The header button is back beside the dialog's own confirm button.
+    expect(screen.getAllByRole('button', { name: en['action.label'] })).toHaveLength(2)
   })
 })

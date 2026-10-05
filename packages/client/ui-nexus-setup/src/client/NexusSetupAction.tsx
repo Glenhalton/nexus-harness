@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import type { ObservableSnapshot } from '@deepseek-ai/dsh-client-store'
 import type { InjectFace, PropsLocale, PropsRuntime } from '@deepseek-ai/dsh-client-ui-slots'
+import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client'
 import { Button, Modal, Tooltip } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { NexusSetupPhase, NexusSetupPhases } from './controller.ts'
@@ -11,6 +12,8 @@ import css from './NexusSetupAction.module.css'
 export interface NexusSetupActionInjected {
   hooks: {
     nexusSetupPhases: ObservableSnapshot<NexusSetupPhases>
+    /** Session whose setup dialog is open, shared with other plugins through the `nexusSetup` service. */
+    nexusSetupDialog: ObservableSnapshot<SessionId | null>
   }
   /** Read one folder's status (once per page life). */
   check: (path: string) => Promise<void>
@@ -18,6 +21,10 @@ export interface NexusSetupActionInjected {
   setUp: (path: string) => Promise<boolean>
   /** Hide the prompt for one folder until reload. */
   dismiss: (path: string) => void
+  /** Open the dialog in this Session's header. */
+  openDialog: (sessionId: SessionId, path: string) => void
+  /** Close the dialog when it belongs to this Session. */
+  closeDialog: (sessionId: SessionId) => void
 }
 
 /** Full props for the Session-header setup prompt. */
@@ -35,10 +42,11 @@ const OFFERED: ReadonlySet<NexusSetupPhase | undefined> = new Set(['needs-setup'
  * @returns the header button and its dialog, or null when nothing is offered.
  */
 export function NexusSetupAction(props: NexusSetupActionProps): React.JSX.Element | null {
-  const { sessionId, useSessions, useNexusSetupPhases, check, t } = props
+  const { sessionId, useSessions, useNexusSetupPhases, useNexusSetupDialog, check, t } = props
   const cwd = useSessions(state => state.byId[sessionId]?.cwd)
   const phase = useNexusSetupPhases(phases => cwd === undefined ? undefined : phases[cwd])
-  const [open, setOpen] = useState(false)
+  // The dialog state lives in the controller so the brain status chip can open it too.
+  const open = useNexusSetupDialog(target => target === sessionId)
 
   useEffect(() => {
     if (cwd !== undefined && cwd !== '') void check(cwd)
@@ -47,21 +55,22 @@ export function NexusSetupAction(props: NexusSetupActionProps): React.JSX.Elemen
   if (cwd === undefined || cwd === '' || !OFFERED.has(phase)) return null
   const working = phase === 'setting-up'
   const close = (): void => {
-    if (!working) setOpen(false)
+    if (!working) props.closeDialog(sessionId)
   }
   const later = (): void => {
+    /* v8 ignore next -- "Not now" is disabled while setup runs; the guard only backs that up. */
     if (working) return
-    setOpen(false)
+    props.closeDialog(sessionId)
     props.dismiss(cwd)
   }
   const confirm = async (): Promise<void> => {
-    if (await props.setUp(cwd)) setOpen(false)
+    if (await props.setUp(cwd)) props.closeDialog(sessionId)
   }
 
   return (
     <>
       <Tooltip label={t('action.tooltip')} side="bottom">
-        <Button variant="outline" size="sm" onClick={() => { setOpen(true) }}>{t('action.label')}</Button>
+        <Button variant="outline" size="sm" onClick={() => { props.openDialog(sessionId, cwd) }}>{t('action.label')}</Button>
       </Tooltip>
       <Modal
         open={open}
