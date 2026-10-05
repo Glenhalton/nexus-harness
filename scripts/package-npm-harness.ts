@@ -323,7 +323,7 @@ export function buildHarnessManifest(input: HarnessManifestInput): Record<string
   return {
     name: HARNESS_PACKAGE_NAME,
     version: HARNESS_VERSION,
-    description: 'NEXUS Harness: AI-Native Execution Harness and Web Interface for NEXUS Projects',
+    description: 'NEXUS Harness: AI-Native Execution Harness and Web Interface for NEXUS Projects. Features real-time MCP orchestration, Cordis reactive plugin runtime, session management, and integrated agent tooling.',
     author: 'Glenhalton Takor <nexus@glenhalton.com>',
     contributors: [
       'GDA Africa <hello@gdaafrica.org>',
@@ -332,10 +332,22 @@ export function buildHarnessManifest(input: HarnessManifestInput): Record<string
     homepage: 'https://nexus.glenhalton.com/harness',
     bugs: {
       url: 'https://github.com/Glenhalton/nexus-harness/issues',
+      email: 'hello@gdaafrica.org',
     },
+    funding: [
+      {
+        type: 'individual',
+        url: 'https://nexus.glenhalton.com',
+      },
+      {
+        type: 'github',
+        url: 'https://github.com/Glenhalton',
+      },
+    ],
     publishConfig: {
       access: 'public',
     },
+    preferGlobal: true,
     type: 'module',
     bin: { ...HARNESS_BINS },
     scripts: { ...HARNESS_SCRIPTS },
@@ -354,6 +366,7 @@ export function buildHarnessManifest(input: HarnessManifestInput): Record<string
       'nexus',
       'nexus-framework',
       'nexus-harness',
+      'nexus-code',
       'ai-native',
       'execution-harness',
       'agent-harness',
@@ -366,6 +379,12 @@ export function buildHarnessManifest(input: HarnessManifestInput): Record<string
       'cordis',
       'deepseek-harness',
       'gda-africa',
+      'cli',
+      'terminal',
+      'ai-ide',
+      'agentic-ai',
+      'context-engine',
+      'web-ui',
     ],
     license: 'SEE LICENSE IN LICENSE',
     engines: {
