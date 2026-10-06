@@ -7,9 +7,9 @@
 # from the same tarballs the main-repository release workflow publishes.
 name: Sandbox
 
+# Upstream DeepSeek sandbox — disabled for Nexus Harness; use ci.yml instead
 on:
-  push:
-    branches: [master]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

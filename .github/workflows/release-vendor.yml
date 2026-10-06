@@ -8,10 +8,8 @@
 # its own tag.
 name: Release (vendor)
 
+# Upstream DeepSeek vendor release — disabled for Nexus Harness; use ci.yml instead
 on:
-  pull_request:
-  push:
-    branches: [master]
   workflow_dispatch:
 
 permissions:

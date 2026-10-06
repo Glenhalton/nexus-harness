@@ -1,9 +1,9 @@
 name: weighted-approval-review-event
 run-name: weighted-approval-review-event:${{ github.event.pull_request.number }}
 
+# Upstream DeepSeek review event bot — disabled for Nexus Harness
 on:
-  pull_request_review:
-    types: [submitted, edited, dismissed]
+  workflow_dispatch:
 
 permissions: {}
 

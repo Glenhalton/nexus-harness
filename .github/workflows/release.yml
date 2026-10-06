@@ -7,10 +7,8 @@
 # release-publish.yml from a dsh-v* tag.
 name: Release (dsh)
 
+# Upstream DeepSeek release — disabled for Nexus Harness; use ci.yml instead
 on:
-  pull_request:
-  push:
-    branches: [master]
   workflow_dispatch:
 
 permissions:

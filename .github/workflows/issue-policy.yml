@@ -1,10 +1,8 @@
 name: Issue policy
 
+# Upstream DeepSeek policy bot — disabled for Nexus Harness
 on:
-  pull_request:
-    types: [opened, edited, synchronize, reopened, labeled, unlabeled, ready_for_review, review_requested]
-  pull_request_review:
-    types: [submitted]
+  workflow_dispatch:
 
 permissions:
   contents: read

@@ -1,8 +1,7 @@
 name: CI master
 
+# Upstream DeepSeek suite — disabled for Nexus Harness; use ci.yml instead
 on:
-  push:
-    branches: [master]
   workflow_dispatch:
     inputs:
       suite:

@@ -1,11 +1,8 @@
 name: Expected filenames
 
+# Upstream golden filename check — disabled for Nexus Harness
 on:
-  pull_request:
-    paths:
-      - '*[gG][oO][lL][dD][eE][nN]*'
-      - '**/*[gG][oO][lL][dD][eE][nN]*'
-      - '!vendor/**'
+  workflow_dispatch:
 
 permissions:
   contents: read

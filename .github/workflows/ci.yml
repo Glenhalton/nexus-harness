@@ -65,8 +65,8 @@ jobs:
       - name: Check if version needs publishing
         id: version
         run: |
-          CURRENT=$(node -p "require('./apps/nexus-harness/package.json').version")
-          PKG_NAME=$(node -p "require('./apps/nexus-harness/package.json').name")
+          CURRENT=$(node -p "require('./package.json').version || require('./apps/nexus-harness/package.json').version")
+          PKG_NAME="@nexus-framework/harness"
           PUBLISHED=$(npm view "$PKG_NAME@$CURRENT" version 2>/dev/null || echo "")
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
           echo "pkg_name=$PKG_NAME" >> $GITHUB_OUTPUT
@@ -114,8 +114,12 @@ jobs:
           VERSION=${{ steps.version.outputs.current }}
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "v$VERSION" -m "Release @nexus-framework/harness v$VERSION"
-          git push origin "v$VERSION"
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "Tag v$VERSION already exists locally"
+          else
+            git tag -a "v$VERSION" -m "Release @nexus-framework/harness v$VERSION"
+            git push origin "v$VERSION" || true
+          fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
