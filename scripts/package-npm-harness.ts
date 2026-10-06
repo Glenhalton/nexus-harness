@@ -23,6 +23,7 @@
 import { spawn } from 'node:child_process'
 import {
   chmodSync,
+  cpSync,
   existsSync,
   globSync,
   mkdirSync,
@@ -632,6 +633,19 @@ export async function packageHarness(): Promise<void> {
   mkdirSync(RUNTIME_MODULES_DIR, { recursive: true })
   console.log(`Packing ${String(closure.length)} workspace packages into runtime/node_modules...`)
   await materializeClosure(closure)
+
+  // Materialize any platform packages present in the workspace whose binaries exist
+  for (const [name, manifest] of workspace) {
+    if (manifest.platform === true) {
+      const binDir = join(manifest.dir, 'bin')
+      if (existsSync(binDir) && readdirSync(binDir).length > 0) {
+        const target = join(RUNTIME_MODULES_DIR, name)
+        mkdirSync(target, { recursive: true })
+        cpSync(manifest.dir, target, { recursive: true })
+        console.log(`Included built platform package ${name} in runtime/node_modules`)
+      }
+    }
+  }
 
   // 3. Drop type declarations, source maps, and build state; nothing reads them at runtime.
   walkFiles(RUNTIME_DIR, (path) => {
