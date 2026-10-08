@@ -131,6 +131,9 @@ function HeroFish({ hovering }: { hovering: boolean }) {
  */
 export function HeroShell({ t, renderSlot, children }: HeroShellProps) {
   const [hovering, setHovering] = useState(false)
+  const heroVersion = process.env.DSH_CLIENT_VERSION
+    ? (process.env.DSH_CLIENT_VERSION.startsWith('v') ? process.env.DSH_CLIENT_VERSION : `v${process.env.DSH_CLIENT_VERSION}`)
+    : t('hero.preview')
   return (
     <div className={css.root}>
       <div className={css.stack}>
@@ -152,7 +155,7 @@ export function HeroShell({ t, renderSlot, children }: HeroShellProps) {
           <span className={css.titleGroup}>
             {/* Own element: keeps the headline text addressable apart from the badge. */}
             <span>{t('hero.headline')}</span>
-            <span className={css.previewBadge}>{t('hero.preview')}</span>
+            <span className={css.previewBadge}>{heroVersion}</span>
           </span>
         </div>
         <div className={css.body}>

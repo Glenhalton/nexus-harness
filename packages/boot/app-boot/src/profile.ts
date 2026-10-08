@@ -691,9 +691,10 @@ export function loadProfile(
   binName: string, name: string, installAnchor: string, home: string = resolveDshHome(),
   options: { userLayer?: boolean } = {},
 ): Profile {
-  const dir = resolveProfileDir(name, home)
+  const effectiveName = name === 'default' || name === 'tui' ? 'headless' : name
+  const dir = resolveProfileDir(effectiveName, home)
   if (!existsSync(join(dir, 'package.json'))) {
-    const template = PROFILE_TEMPLATES[name]
+    const template = PROFILE_TEMPLATES[effectiveName]
     if (template === undefined) {
       throw new Error(
         `${binName}: profile ${JSON.stringify(name)} does not exist; create it with 'dsh plugin --profile ${name} add <package>'`,
@@ -702,7 +703,7 @@ export function loadProfile(
     initProfile(dir, template.bundles)
   }
   removeLinkProjections(dir)
-  normalizeShippedProfile(name, dir, readProfileManifest(binName, dir))
+  normalizeShippedProfile(effectiveName, dir, readProfileManifest(binName, dir))
   return loadProfileDirectory(binName, dir, installAnchor, options)
 }
 

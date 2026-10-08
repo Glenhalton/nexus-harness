@@ -99,7 +99,9 @@
     "@deepseek-ai/dsh-plugin-manager": "workspace:*",
     "@deepseek-ai/dsh-atomic-write": "workspace:*",
     "@deepseek-ai/dsh-agent-preset": "workspace:*",
-    "@deepseek-ai/dsh-experimental-voice-input-bundle": "workspace:*"
+    "@deepseek-ai/dsh-experimental-voice-input-bundle": "workspace:*",
+    "@deepseek-ai/dsh-experimental-nexus-brain-context": "workspace:*",
+    "@deepseek-ai/dsh-experimental-tool-nexus-brain": "workspace:*"
   },
   "devDependencies": {
     "@agentclientprotocol/sdk": "1.4.0",

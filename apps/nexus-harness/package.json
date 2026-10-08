@@ -1,6 +1,6 @@
 {
   "name": "@nexus-framework/harness",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "NEXUS Harness: AI-Native Execution Harness and Web Interface for NEXUS Projects. Features real-time MCP orchestration, Cordis reactive plugin runtime, session management, and integrated agent tooling.",
   "author": "Glenhalton Takor <nexus@glenhalton.com>",
   "contributors": [

@@ -258,6 +258,12 @@ importers:
       '@deepseek-ai/dsh-experimental-agent-team-profile':
         specifier: workspace:*
         version: link:../../packages/experimental/agent-team-profile
+      '@deepseek-ai/dsh-experimental-nexus-brain-context':
+        specifier: workspace:*
+        version: link:../../packages/experimental/nexus-brain-context
+      '@deepseek-ai/dsh-experimental-tool-nexus-brain':
+        specifier: workspace:*
+        version: link:../../packages/experimental/tool-nexus-brain
       '@deepseek-ai/dsh-experimental-voice-input-bundle':
         specifier: workspace:*
         version: link:../../packages/experimental/voice-input-bundle
